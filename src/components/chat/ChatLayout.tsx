@@ -271,6 +271,7 @@ export function ChatLayout() {
     content?: string;
     type?: any;
     replyToId?: string | null;
+    replyTo?: MessageItem | null;
     mediaUrl?: string | null;
     fileName?: string | null;
     fileSize?: number | null;
@@ -286,6 +287,7 @@ export function ChatLayout() {
       content: payload.content || null,
       type: payload.type || "TEXT",
       replyToId: payload.replyToId || null,
+      replyTo: payload.replyTo || undefined,
       mediaUrl: payload.mediaUrl || null,
       fileName: payload.fileName || null,
       fileSize: payload.fileSize || null,
@@ -312,13 +314,24 @@ export function ChatLayout() {
     fetch(`/api/conversations/${activeConversationId}/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        content: payload.content,
+        type: payload.type,
+        replyToId: payload.replyToId,
+        mediaUrl: payload.mediaUrl,
+        fileName: payload.fileName,
+        fileSize: payload.fileSize,
+        voiceDuration: payload.voiceDuration,
+      }),
     })
       .then(async (res) => {
         if (res.ok) {
           const data = await res.json();
-          // Silently update temporary client ID with permanent database ID
-          updateMessage(activeConversationId, instantId, { id: data.message.id });
+          // Silently update temporary client ID with permanent database ID and full replyTo
+          updateMessage(activeConversationId, instantId, {
+            id: data.message.id,
+            replyTo: data.message.replyTo || payload.replyTo || undefined,
+          });
         }
       })
       .catch((err) => {

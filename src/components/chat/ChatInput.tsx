@@ -28,6 +28,7 @@ interface ChatInputProps {
     content?: string;
     type?: "TEXT" | "IMAGE" | "VIDEO" | "AUDIO" | "FILE" | "VOICE";
     replyToId?: string | null;
+    replyTo?: MessageItem | null;
     mediaUrl?: string | null;
     fileName?: string | null;
     fileSize?: number | null;
@@ -81,6 +82,7 @@ export function ChatInput({
       content: trimmed,
       type: "TEXT",
       replyToId: replyingTo?.id || null,
+      replyTo: replyingTo || null,
     });
 
     setContent("");
@@ -124,6 +126,7 @@ export function ChatInput({
         fileName: file.name,
         fileSize: file.size,
         replyToId: replyingTo?.id || null,
+        replyTo: replyingTo || null,
       });
 
       setReplyingTo(null);
@@ -153,6 +156,7 @@ export function ChatInput({
               fileName: "screenshot.png",
               fileSize: file.size,
               replyToId: replyingTo?.id || null,
+              replyTo: replyingTo || null,
             });
           };
           reader.readAsDataURL(file);
