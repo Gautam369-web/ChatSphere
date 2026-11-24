@@ -141,7 +141,7 @@ export function MessageBubble({
         setShowMoreMenu(false);
         setShowQuickReactions(false);
       }}
-      className={`group relative flex gap-2.5 my-1.5 px-4 ${
+      className={`group relative flex gap-2 my-1 px-1 sm:px-2 ${
         isMine ? "justify-end" : "justify-start"
       }`}
     >
@@ -282,7 +282,7 @@ export function MessageBubble({
       )}
 
       {/* Main Bubble Content Container with WhatsApp swipe-to-reply */}
-      <div className="relative inline-flex items-center w-fit max-w-[85%] sm:max-w-[70%] md:max-w-[55%]">
+      <div className="relative inline-flex items-center w-fit max-w-[76%] sm:max-w-[66%] md:max-w-[50%]">
         {/* Animated Swipe Reply Indicator (Swiping Right) */}
         {dragX > 0 && (
           <div
@@ -326,7 +326,7 @@ export function MessageBubble({
             transform: `translateX(${dragX}px)`,
             transition: isSwiping ? "none" : "transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)",
           }}
-          className={`w-fit max-w-[85%] sm:max-w-[70%] md:max-w-[55%] flex flex-col ${
+          className={`w-fit max-w-[76%] sm:max-w-[66%] md:max-w-[50%] flex flex-col ${
             isMine ? "items-end" : "items-start"
           } touch-pan-y`}
         >
@@ -339,7 +339,7 @@ export function MessageBubble({
 
           {/* Bubble */}
           <div
-            className={`relative rounded-2xl px-3 py-1.5 text-sm shadow-xs transition-all ${
+            className={`relative rounded-2xl px-2.5 py-1.5 sm:px-3 text-sm shadow-xs transition-all ${
               isDeleted
                 ? "bg-slate-100 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/50 text-slate-400 italic"
                 : isMine
@@ -448,12 +448,19 @@ export function MessageBubble({
 
               {/* Text Message with WhatsApp-style compact inline/trailing timestamp */}
               {message.content && (!message.type || message.type === "TEXT") ? (
-                <div className="inline-flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                  <span className="text-[14px] leading-relaxed break-words text-left select-text">
-                    {message.content}
-                  </span>
+                <div className="relative">
+                  <p className="text-[14px] leading-relaxed break-words text-left select-text m-0">
+                    <span>{message.content}</span>
+                    {/* Inline spacer to reserve space for the bottom-right timestamp without breaking line */}
+                    <span
+                      className={`inline-block ${
+                        isMine ? "w-[58px]" : "w-[42px]"
+                      } h-3 select-none pointer-events-none`}
+                      aria-hidden="true"
+                    />
+                  </p>
                   <span
-                    className={`inline-flex items-center gap-1 text-[10px] select-none shrink-0 pt-0.5 ${
+                    className={`absolute right-0 bottom-0 inline-flex items-center gap-1 text-[10px] select-none shrink-0 whitespace-nowrap leading-none pb-0.5 ${
                       isMine ? "text-indigo-200" : "text-slate-400 dark:text-slate-400"
                     }`}
                   >
