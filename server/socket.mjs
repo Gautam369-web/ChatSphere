@@ -7,7 +7,15 @@ dotenv.config();
 const port = process.env.SOCKET_PORT || 3001;
 const httpServer = createServer((req, res) => {
   res.writeHead(200, { "Content-Type": "application/json" });
-  res.end(JSON.stringify({ status: "ok", name: "ChatSphere Socket Server", version: "1.0.0" }));
+  res.end(
+    JSON.stringify({
+      status: "ok",
+      name: "ChatSphere Socket Server",
+      version: "1.0.0",
+      uptime: Math.floor(process.uptime()),
+      timestamp: new Date().toISOString(),
+    })
+  );
 });
 
 const io = new Server(httpServer, {
@@ -214,4 +222,31 @@ io.on("connection", (socket) => {
 
 httpServer.listen(port, () => {
   console.log(`> ChatSphere Socket.IO Server running on http://localhost:${port}`);
+
+  // Automatic Render / Free-tier Keep-Alive
+  // Render spins down instances after 15 minutes of HTTP inactivity.
+  // Pinging the public external URL every 10 minutes keeps the server awake 24/7.
+  const externalUrl =
+    process.env.RENDER_EXTERNAL_URL ||
+    process.env.PUBLIC_URL ||
+    process.env.SELF_URL;
+
+  if (externalUrl) {
+    const PING_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes (well under Render's 15m limit)
+    console.log(`[KeepAlive] Service active. Auto self-ping scheduled for: ${externalUrl}`);
+
+    setInterval(async () => {
+      try {
+        const pingUrl = externalUrl.replace(/\/$/, "");
+        const res = await fetch(pingUrl);
+        console.log(`[KeepAlive] Sent self-ping to ${pingUrl} - Status: ${res.status}`);
+      } catch (err) {
+        console.warn(`[KeepAlive] Ping attempt to ${externalUrl} notice:`, err.message);
+      }
+    }, PING_INTERVAL_MS);
+  } else {
+    console.log(
+      `[KeepAlive] Tip: Set RENDER_EXTERNAL_URL or SELF_URL in environment to enable auto 24/7 keep-alive.`
+    );
+  }
 });

@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "socket": "node server/socket.mjs",
+    "keep-alive": "node scripts/keep-alive.mjs",
     "dev:all": "concurrently \"npm run dev\" \"npm run socket\"",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
