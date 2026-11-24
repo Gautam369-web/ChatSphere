@@ -26,6 +26,7 @@ interface MessageBubbleProps {
   isMine: boolean;
   isGroup: boolean;
   currentUser: UserSummary;
+  isSameSenderAsPrev?: boolean;
   onReply: (message: MessageItem) => void;
   onReact: (messageId: string, emoji: string) => void;
   onPin: (messageId: string) => void;
@@ -39,13 +40,14 @@ export function MessageBubble({
   isMine,
   isGroup,
   currentUser,
+  isSameSenderAsPrev = false,
   onReply,
   onReact,
   onPin,
   onStar,
   onEdit,
   onDelete,
-  }: MessageBubbleProps) {
+}: MessageBubbleProps) {
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [showActions, setShowActions] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
@@ -161,7 +163,9 @@ export function MessageBubble({
         setShowMoreMenu(false);
         setShowQuickReactions(false);
       }}
-      className={`group relative flex gap-1.5 my-[1px] px-1 sm:px-2 ${
+      className={`group relative flex w-full ${
+        isSameSenderAsPrev ? "mt-[2px]" : "mt-2 sm:mt-2.5"
+      } px-1.5 sm:px-3 ${
         isMine ? "justify-end" : "justify-start"
       }`}
     >
@@ -302,7 +306,11 @@ export function MessageBubble({
       )}
 
       {/* Main Bubble Content Container with WhatsApp swipe-to-reply */}
-      <div className="relative inline-flex items-center w-fit max-w-[76%] sm:max-w-[66%] md:max-w-[50%]">
+      <div
+        className={`relative flex flex-col ${
+          isMine ? "items-end" : "items-start"
+        } max-w-[85%] sm:max-w-[70%] md:max-w-[55%]`}
+      >
         {/* Animated Swipe Reply Indicator (Swiping Right) */}
         {dragX > 0 && (
           <div
@@ -346,7 +354,7 @@ export function MessageBubble({
             transform: `translateX(${dragX}px)`,
             transition: isSwiping ? "none" : "transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)",
           }}
-          className={`w-fit max-w-[76%] sm:max-w-[66%] md:max-w-[50%] flex flex-col ${
+          className={`relative w-fit max-w-full flex flex-col ${
             isMine ? "items-end" : "items-start"
           } touch-pan-y`}
         >
@@ -363,8 +371,8 @@ export function MessageBubble({
               isDeleted
                 ? "bg-slate-100 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/50 text-slate-400 italic"
                 : isMine
-                ? "bg-indigo-600 dark:bg-[#005c4b] text-white rounded-tr-none shadow-xs"
-                : "bg-white dark:bg-[#202c33] text-slate-900 dark:text-[#e9edef] rounded-tl-none border border-slate-200/60 dark:border-transparent shadow-xs"
+                ? `bg-indigo-600 dark:bg-[#005c4b] text-white shadow-xs ${!isSameSenderAsPrev ? "rounded-tr-none" : ""}`
+                : `bg-white dark:bg-[#202c33] text-slate-900 dark:text-[#e9edef] border border-slate-200/60 dark:border-transparent shadow-xs ${!isSameSenderAsPrev ? "rounded-tl-none" : ""}`
             }`}
           >
           {/* Reply Quote Banner */}
@@ -468,10 +476,12 @@ export function MessageBubble({
 
               {/* Text Message with WhatsApp-style compact inline/trailing timestamp */}
               {message.content && (!message.type || message.type === "TEXT") ? (
-                <div className="text-[13.5px] leading-[17.5px] break-words text-left select-none">
-                  <span>{message.content}</span>
+                <div className="flex flex-wrap items-baseline justify-end gap-x-2 gap-y-0.5 select-none">
+                  <span className="text-[13.5px] leading-[17.5px] break-words flex-1 min-w-fit text-left">
+                    {message.content}
+                  </span>
                   <span
-                    className={`float-right ml-2 mt-[2px] inline-flex items-center gap-0.5 text-[10px] leading-none select-none shrink-0 whitespace-nowrap ${
+                    className={`inline-flex items-center gap-0.5 text-[10px] leading-none select-none shrink-0 whitespace-nowrap self-end pb-[0.5px] ml-auto ${
                       isMine ? "text-emerald-100/80 dark:text-[#8696a0]" : "text-slate-400 dark:text-[#8696a0]"
                     }`}
                   >
@@ -484,11 +494,11 @@ export function MessageBubble({
                         {message.isOptimistic ? (
                           <Clock className="w-2.5 h-2.5 text-emerald-200 animate-spin" />
                         ) : message.status === "SEEN" ? (
-                          <CheckCheck className="w-3 h-3 text-cyan-300 dark:text-[#53bdeb]" />
+                          <CheckCheck className="w-3.5 h-3.5 text-cyan-300 dark:text-[#53bdeb]" />
                         ) : message.status === "DELIVERED" ? (
-                          <CheckCheck className="w-3 h-3 text-emerald-100 dark:text-[#8696a0]" />
+                          <CheckCheck className="w-3.5 h-3.5 text-emerald-100 dark:text-[#8696a0]" />
                         ) : (
-                          <Check className="w-3 h-3 text-emerald-100 dark:text-[#8696a0]" />
+                          <Check className="w-3.5 h-3.5 text-emerald-100 dark:text-[#8696a0]" />
                         )}
                       </span>
                     )}

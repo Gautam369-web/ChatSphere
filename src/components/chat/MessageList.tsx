@@ -69,7 +69,7 @@ export function MessageList({
       <div
         ref={containerRef}
         onScroll={handleScroll}
-        className="h-full overflow-y-auto px-2 sm:px-4 py-2 space-y-1 select-none"
+        className="h-full overflow-y-auto px-1.5 sm:px-3 py-2 select-none"
       >
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-500">
@@ -92,6 +92,11 @@ export function MessageList({
               new Date(prevMessage.createdAt).toDateString() !==
                 new Date(message.createdAt).toDateString();
 
+            const isSameSenderAsPrev =
+              !showDateDivider &&
+              prevMessage &&
+              prevMessage.senderId === message.senderId;
+
             return (
               <React.Fragment key={message.id || index}>
                 {showDateDivider && (
@@ -106,6 +111,7 @@ export function MessageList({
                   isMine={isMine}
                   isGroup={isGroup}
                   currentUser={currentUser}
+                  isSameSenderAsPrev={isSameSenderAsPrev}
                   onReply={onReply}
                   onReact={onReact}
                   onPin={onPin}
