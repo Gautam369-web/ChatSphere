@@ -17,7 +17,7 @@ import { SettingsView } from "./SettingsView";
 import { ContactsView } from "./ContactsView";
 import { AdminView } from "./AdminView";
 import { MessageItem, UserSummary } from "@/types";
-import { MessageSquare, Sparkles } from "lucide-react";
+import { MessageSquare, Sparkles, X } from "lucide-react";
 import { sounds } from "@/lib/sound";
 
 export function ChatLayout() {
@@ -39,6 +39,9 @@ export function ChatLayout() {
     setInfoPanelOpen,
     setReplyingTo,
     markConversationAsRead,
+    onlineUsers,
+    liveNotification,
+    setLiveNotification,
   } = useChatStore();
 
   const {
@@ -279,6 +282,11 @@ export function ChatLayout() {
   }) => {
     if (!activeConversationId || !currentUser) return;
 
+    const activeConv = conversations.find((c) => c.id === activeConversationId);
+    const memberIds = activeConv?.members.map((m) => m.userId) || [];
+    const otherMembers = memberIds.filter((id) => id !== currentUser.id);
+    const isRecipientOnline = otherMembers.some((id) => onlineUsers.has(id));
+
     const instantId = `msg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const instantMessage: MessageItem = {
       id: instantId,
@@ -298,7 +306,7 @@ export function ChatLayout() {
       updatedAt: new Date().toISOString(),
       sender: currentUser,
       reactions: [],
-      status: "SENT" as any, // Instant single tick like WhatsApp
+      status: (isRecipientOnline ? "DELIVERED" : "SENT") as any,
     };
 
     // 1. Instantly render on screen & play sent chime (0ms latency!)
@@ -306,8 +314,6 @@ export function ChatLayout() {
     sounds.playSent();
 
     // 2. Instantly push to WebSocket room without waiting for DB roundtrip (<15ms!)
-    const activeConv = conversations.find((c) => c.id === activeConversationId);
-    const memberIds = activeConv?.members.map((m) => m.userId) || [];
     emitSendMessage(instantMessage, memberIds);
 
     // 3. Non-blocking asynchronous database persistence
@@ -520,7 +526,59 @@ export function ChatLayout() {
   const unreadTotal = conversations.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
 
   return (
-    <div className="flex h-screen h-[100dvh] w-screen overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans transition-colors duration-200">
+    <div className="flex h-screen h-[100dvh] w-screen overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans transition-colors duration-200 select-none relative">
+      {/* WhatsApp-Style Live In-App Dropdown Notification Banner */}
+      {liveNotification && (
+        <div
+          className="fixed top-3 left-1/2 -translate-x-1/2 z-60 w-[94%] sm:w-[420px] max-w-md bg-white/95 dark:bg-[#1f2c34]/95 backdrop-blur-xl border border-slate-200/80 dark:border-slate-700/80 rounded-2xl shadow-2xl p-3 flex items-center justify-between gap-3 cursor-pointer transition-all duration-300 animate-in slide-in-from-top-4"
+          onClick={() => {
+            setActiveConversationId(liveNotification.conversationId);
+            setCurrentTab("chats");
+            setLiveNotification(null);
+          }}
+        >
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="relative shrink-0">
+              <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-700 ring-2 ring-emerald-500/50">
+                <img
+                  src={
+                    liveNotification.sender?.image ||
+                    `https://api.dicebear.com/7.x/initials/svg?seed=${liveNotification.sender?.name || "U"}`
+                  }
+                  alt={liveNotification.sender?.name || "User"}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#1f2c34]" />
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-1 mb-0.5">
+                <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                  {liveNotification.sender?.name || liveNotification.sender?.username || "Chat"}
+                </span>
+                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold shrink-0">
+                  Now
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-300 truncate">
+                {liveNotification.content || (liveNotification.type === "IMAGE" ? "📷 Photo" : "📎 Attachment")}
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setLiveNotification(null);
+            }}
+            className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition shrink-0"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* 1. Primary Left Navigation Bar */}
       <SidebarNav
         currentTab={currentTab}

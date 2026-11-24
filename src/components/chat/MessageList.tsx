@@ -69,7 +69,7 @@ export function MessageList({
       <div
         ref={containerRef}
         onScroll={handleScroll}
-        className="h-full overflow-y-auto px-2 sm:px-4 py-2 space-y-1 select-text"
+        className="h-full overflow-y-auto px-2 sm:px-4 py-2 space-y-1 select-none"
       >
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-500">

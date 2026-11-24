@@ -63,9 +63,80 @@ export function useSocket() {
       setUserTyping(conversationId, username, isTyping);
     });
 
+    // Ask for Notification permission on mount if supported
+    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission().catch(() => {});
+    }
+
     socket.on("receive_message", (message: MessageItem) => {
       sounds.playReceived();
       addMessage(message.conversationId, message);
+
+      const state = useChatStore.getState();
+      const isViewing =
+        state.activeConversationId === message.conversationId &&
+        typeof document !== "undefined" &&
+        !document.hidden;
+
+      if (isViewing) {
+        socket.emit("mark_messages_read", {
+          conversationId: message.conversationId,
+          readerId: session.user.id,
+        });
+      } else {
+        socket.emit("message_delivered", {
+          conversationId: message.conversationId,
+          messageId: message.id,
+          senderId: message.senderId,
+        });
+
+        // WhatsApp-style live in-app dropdown banner
+        state.setLiveNotification(message);
+        setTimeout(() => {
+          if (useChatStore.getState().liveNotification?.id === message.id) {
+            useChatStore.getState().setLiveNotification(null);
+          }
+        }, 4500);
+
+        // System notification if app in background
+        if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+          try {
+            new Notification(message.sender?.name || message.sender?.username || "New Message", {
+              body: message.content || (message.type === "IMAGE" ? "Photo" : "Attachment"),
+              icon: message.sender?.image || "/icons/icon-192x192.png",
+            });
+          } catch {}
+        }
+      }
+    });
+
+    socket.on("new_message_notification", (message: MessageItem) => {
+      const state = useChatStore.getState();
+      if (state.activeConversationId !== message.conversationId) {
+        state.setLiveNotification(message);
+        setTimeout(() => {
+          if (useChatStore.getState().liveNotification?.id === message.id) {
+            useChatStore.getState().setLiveNotification(null);
+          }
+        }, 4500);
+      }
+    });
+
+    // Real-time status update (Instant double tick & blue tick feedback)
+    socket.on("message_status_update", ({ conversationId, messageId, status }: { conversationId: string; messageId: string; status: any }) => {
+      const state = useChatStore.getState();
+      const currentMessages = state.messages[conversationId] || [];
+      const updated = currentMessages.map((msg) => {
+        if (msg.id === messageId || (msg.isOptimistic && msg.senderId === session?.user?.id)) {
+          return {
+            ...msg,
+            status,
+            isOptimistic: false,
+          };
+        }
+        return msg;
+      });
+      state.setMessages(conversationId, updated);
     });
 
     socket.on("messages_seen", ({ conversationId, readerId }: { conversationId: string; readerId: string }) => {
@@ -76,6 +147,7 @@ export function useSocket() {
           return {
             ...msg,
             status: "SEEN" as any,
+            isOptimistic: false,
           };
         }
         return msg;

@@ -104,11 +104,43 @@ io.on("connection", (socket) => {
   // 4. Send Message (broadcast to conversation & notify members)
   socket.on("send_message", (message) => {
     if (!message || !message.conversationId) return;
-    
+
+    // Check if another user is currently in this conversation room
+    const convRoom = io.sockets.adapter.rooms.get(`conversation:${message.conversationId}`);
+    let otherSocketsInRoom = 0;
+    if (convRoom) {
+      for (const sId of convRoom) {
+        if (sId !== socket.id) otherSocketsInRoom++;
+      }
+    }
+
+    // Check if any recipient is connected to the socket server
+    let isRecipientOnline = false;
+    if (message.conversationMembers && Array.isArray(message.conversationMembers)) {
+      isRecipientOnline = message.conversationMembers.some((memberId) => {
+        return memberId !== userId && userSockets.has(memberId) && userSockets.get(memberId).size > 0;
+      });
+    }
+
+    // Instant status feedback to sender (0ms latency!)
+    if (otherSocketsInRoom > 0) {
+      socket.emit("message_status_update", {
+        conversationId: message.conversationId,
+        messageId: message.id,
+        status: "SEEN",
+      });
+    } else if (isRecipientOnline) {
+      socket.emit("message_status_update", {
+        conversationId: message.conversationId,
+        messageId: message.id,
+        status: "DELIVERED",
+      });
+    }
+
     // Broadcast message to everyone ELSE in the conversation room immediately
     socket.to(`conversation:${message.conversationId}`).emit("receive_message", message);
     
-    // Also notify individual user rooms for conversation list preview updates
+    // Also notify individual user rooms for conversation list preview updates and live notifications
     if (message.conversationMembers && Array.isArray(message.conversationMembers)) {
       message.conversationMembers.forEach((memberId) => {
         if (memberId !== userId) {
@@ -116,9 +148,19 @@ io.on("connection", (socket) => {
             conversationId: message.conversationId,
             lastMessage: message,
           });
+          io.to(`user:${memberId}`).emit("new_message_notification", message);
         }
       });
     }
+  });
+
+  // Acknowledgment when recipient receives/delivers message
+  socket.on("message_delivered", ({ conversationId, messageId, senderId }) => {
+    io.to(`user:${senderId}`).emit("message_status_update", {
+      conversationId,
+      messageId,
+      status: "DELIVERED",
+    });
   });
 
   // 5. Message Read / Seen (Double blue tick)

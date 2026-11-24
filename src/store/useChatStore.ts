@@ -23,6 +23,7 @@ interface ChatStore {
   replyingTo: MessageItem | null;
   activeCall: ActiveCallState | null;
   searchQuery: string;
+  liveNotification: MessageItem | null;
 
   setConversations: (conversations: ConversationItem[]) => void;
   upsertConversation: (conversation: ConversationItem) => void;
@@ -41,6 +42,7 @@ interface ChatStore {
   setSearchQuery: (query: string) => void;
   markConversationAsRead: (conversationId: string) => void;
   removeConversation: (conversationId: string) => void;
+  setLiveNotification: (notification: MessageItem | null) => void;
 }
 
 export const useChatStore = create<ChatStore>((set, get) => ({
@@ -53,6 +55,9 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   replyingTo: null,
   activeCall: null,
   searchQuery: "",
+  liveNotification: null,
+
+  setLiveNotification: (notification) => set({ liveNotification: notification }),
 
   setConversations: (conversations) => set({ conversations }),
 

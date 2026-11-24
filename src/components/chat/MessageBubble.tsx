@@ -468,7 +468,7 @@ export function MessageBubble({
 
               {/* Text Message with WhatsApp-style compact inline/trailing timestamp */}
               {message.content && (!message.type || message.type === "TEXT") ? (
-                <div className="text-[13.5px] leading-[17.5px] break-words text-left select-text">
+                <div className="text-[13.5px] leading-[17.5px] break-words text-left select-none">
                   <span>{message.content}</span>
                   <span
                     className={`float-right ml-2 mt-[2px] inline-flex items-center gap-0.5 text-[10px] leading-none select-none shrink-0 whitespace-nowrap ${
