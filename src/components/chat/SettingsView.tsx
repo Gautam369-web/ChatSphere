@@ -290,24 +290,24 @@ export function SettingsView() {
 
         {/* Account & Direct Sign Out Section */}
         <div className="p-6 rounded-3xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h2 className="text-sm font-bold text-rose-600 dark:text-rose-400 flex items-center gap-2">
                 <LogOut className="w-4 h-4" />
                 <span>Account & Session</span>
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Signed in as <strong>{session?.user?.email}</strong> (ID: {session?.user?.connectCode})
+                Signed in as <strong>{session?.user?.email}</strong> (Direct ID: {session?.user?.connectCode})
               </p>
             </div>
 
             <button
               type="button"
               onClick={() => signOut({ callbackUrl: "/login" })}
-              className="py-2 px-4 rounded-xl font-semibold text-xs text-white bg-rose-600 hover:bg-rose-500 shadow-md shadow-rose-600/20 active:scale-95 transition flex items-center gap-2"
+              className="w-full sm:w-auto py-2.5 px-5 rounded-xl font-semibold text-xs text-white bg-rose-600 hover:bg-rose-500 shadow-md shadow-rose-600/20 active:scale-95 transition flex items-center justify-center gap-2"
             >
-              <LogOut className="w-3.5 h-3.5" />
-              <span>Log Out</span>
+              <LogOut className="w-4 h-4" />
+              <span>Log Out of ChatSphere</span>
             </button>
           </div>
         </div>

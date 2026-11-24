@@ -206,23 +206,13 @@ export function ConversationList({
               {conversations.length}
             </span>
           </h2>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onOpenNewChatModal}
-              className="w-8 h-8 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center transition shadow-md shadow-indigo-600/20 active:scale-95"
-              title="Start New Chat or Group"
-            >
-              <Plus className="w-4 h-4" />
-            </button>
-            {/* Mobile Logout Button in Header */}
-            <button
-              onClick={() => signOut({ callbackUrl: "/login" })}
-              title="Sign Out"
-              className="md:hidden w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 text-rose-500 flex items-center justify-center transition active:scale-95"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
-          </div>
+          <button
+            onClick={onOpenNewChatModal}
+            className="w-8 h-8 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center transition shadow-md shadow-indigo-600/20 active:scale-95"
+            title="Start New Chat or Group"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
         </div>
 
         {/* Direct Connect ID Card */}

@@ -133,7 +133,7 @@ export function SidebarNav({ currentTab, onTabChange, unreadTotal, isChatOpen }:
           </nav>
         </div>
 
-        {/* Bottom Controls: Theme Toggle & Logout */}
+        {/* Bottom Controls: Theme Toggle */}
         <div className="flex flex-col items-center gap-3">
           <button
             onClick={handleToggleTheme}
@@ -142,20 +142,12 @@ export function SidebarNav({ currentTab, onTabChange, unreadTotal, isChatOpen }:
           >
             {theme === "dark" ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-indigo-600" />}
           </button>
-
-          <button
-            onClick={() => signOut({ callbackUrl: "/login" })}
-            title="Sign Out"
-            className="p-3 rounded-2xl text-rose-500 hover:text-rose-600 dark:text-rose-400/80 dark:hover:text-rose-300 hover:bg-rose-500/10 transition"
-          >
-            <LogOut className="w-5 h-5" />
-          </button>
         </div>
       </aside>
 
       {/* 2. Mobile Bottom Navigation Bar (Hidden when inside active chat) */}
       {!isChatOpen && (
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/95 dark:bg-slate-950/95 border-t border-slate-200 dark:border-slate-800/80 backdrop-blur-xl flex items-center justify-around z-50 px-1 shadow-lg transition-colors duration-200">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/95 dark:bg-slate-950/95 border-t border-slate-200 dark:border-slate-800/80 backdrop-blur-xl flex items-center justify-around z-50 px-2 shadow-lg transition-colors duration-200">
           {/* Chats */}
           <button
             onClick={() => onTabChange("chats")}
@@ -220,16 +212,6 @@ export function SidebarNav({ currentTab, onTabChange, unreadTotal, isChatOpen }:
           >
             {theme === "dark" ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-indigo-600" />}
             <span className="text-[10px] font-semibold">{theme === "dark" ? "Light" : "Dark"}</span>
-          </button>
-
-          {/* Mobile Logout Button */}
-          <button
-            onClick={() => signOut({ callbackUrl: "/login" })}
-            title="Sign Out"
-            className="p-2 rounded-xl flex flex-col items-center gap-0.5 text-rose-500 dark:text-rose-400 transition"
-          >
-            <LogOut className="w-5 h-5" />
-            <span className="text-[10px] font-semibold">Log Out</span>
           </button>
         </nav>
       )}
