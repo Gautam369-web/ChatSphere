@@ -60,7 +60,7 @@ export function MessageList({
   };
 
   return (
-    <div className="relative flex-1 overflow-hidden bg-slate-950/40">
+    <div className="relative flex-1 overflow-hidden bg-slate-100/60 dark:bg-slate-950/40 transition-colors duration-200">
       <div
         ref={containerRef}
         onScroll={handleScroll}
@@ -91,7 +91,7 @@ export function MessageList({
               <React.Fragment key={message.id || index}>
                 {showDateDivider && (
                   <div className="flex items-center justify-center my-4">
-                    <span className="text-[11px] font-semibold text-slate-400 bg-slate-900/80 border border-slate-800 px-3 py-1 rounded-full shadow-sm">
+                    <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 bg-white/90 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 px-3 py-1 rounded-full shadow-sm">
                       {formatDateDivider(message.createdAt)}
                     </span>
                   </div>

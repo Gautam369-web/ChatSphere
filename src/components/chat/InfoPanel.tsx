@@ -60,13 +60,13 @@ export function InfoPanel({
   const pinnedMessages = conversation.pinnedMessages || [];
 
   return (
-    <aside className="w-80 lg:w-88 h-full bg-slate-900/90 border-l border-slate-800/60 flex flex-col z-20 shrink-0">
+    <aside className="w-80 lg:w-88 h-full bg-white/95 dark:bg-slate-900/90 border-l border-slate-200 dark:border-slate-800/60 flex flex-col z-20 shrink-0 transition-colors duration-200">
       {/* Header */}
-      <div className="h-16 px-4 border-b border-slate-800/60 flex items-center justify-between">
-        <h3 className="font-bold text-sm text-white">Details</h3>
+      <div className="h-16 px-4 border-b border-slate-200 dark:border-slate-800/60 flex items-center justify-between">
+        <h3 className="font-bold text-sm text-slate-900 dark:text-white">Details</h3>
         <button
           onClick={onClose}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+          className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition"
         >
           <X className="w-4 h-4" />
         </button>
@@ -75,11 +75,11 @@ export function InfoPanel({
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
         {/* Profile Card */}
         <div className="flex flex-col items-center text-center">
-          <div className="w-20 h-20 rounded-3xl overflow-hidden bg-slate-800 ring-2 ring-indigo-500/30 mb-3 shadow-lg">
+          <div className="w-20 h-20 rounded-3xl overflow-hidden bg-slate-100 dark:bg-slate-800 ring-2 ring-indigo-500/30 mb-3 shadow-lg">
             <img src={avatar} alt={title} className="w-full h-full object-cover" />
           </div>
-          <h4 className="font-bold text-base text-white">{title}</h4>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <h4 className="font-bold text-base text-slate-900 dark:text-white">{title}</h4>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             {conversation.isGroup
               ? `${conversation.members.length} members`
               : isOnline
@@ -87,7 +87,7 @@ export function InfoPanel({
               : "Offline"}
           </p>
           {conversation.description && (
-            <p className="text-xs text-slate-300 mt-2 px-3 py-1.5 bg-slate-800/50 rounded-xl border border-slate-700/50">
+            <p className="text-xs text-slate-600 dark:text-slate-300 mt-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700/50">
               {conversation.description}
             </p>
           )}
