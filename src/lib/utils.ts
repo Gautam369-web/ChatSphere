@@ -52,3 +52,34 @@ export function formatLastSeen(date: Date | string): string {
 
   return `${d.toLocaleDateString()} at ${timeStr}`;
 }
+
+export function resolveMessageStatus(
+  msg: {
+    senderId: string;
+    createdAt: Date | string;
+    status?: string | null;
+    statuses?: { userId: string; status: string }[];
+  },
+  members: { userId: string; lastReadAt?: Date | string | null }[] = []
+): "SENT" | "DELIVERED" | "SEEN" {
+  const otherStatuses = (msg.statuses || []).filter((s) => s.userId !== msg.senderId);
+  if (otherStatuses.some((s) => s.status === "SEEN") || msg.status === "SEEN") {
+    return "SEEN";
+  }
+
+  const msgTime = new Date(msg.createdAt).getTime();
+  const otherMembers = members.filter((m) => m.userId !== msg.senderId);
+  if (
+    otherMembers.some(
+      (m) => m.lastReadAt && new Date(m.lastReadAt).getTime() >= msgTime
+    )
+  ) {
+    return "SEEN";
+  }
+
+  if (otherStatuses.some((s) => s.status === "DELIVERED") || msg.status === "DELIVERED") {
+    return "DELIVERED";
+  }
+
+  return "SENT";
+}

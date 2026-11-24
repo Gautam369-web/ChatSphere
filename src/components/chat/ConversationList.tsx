@@ -49,6 +49,7 @@ export function ConversationList({
     setActiveConversationId,
     activeConversationId,
     onlineUsers,
+    presenceSynced,
     typingUsers,
     searchQuery,
     setSearchQuery,
@@ -220,7 +221,11 @@ export function ConversationList({
 
     const otherMember = conv.members.find((m) => m.userId !== currentUserId);
     const otherUser = otherMember?.user;
-    const isOnline = otherUser ? onlineUsers.has(otherUser.id) || otherUser.isOnline : false;
+    const isOnline = otherUser
+      ? presenceSynced
+        ? onlineUsers.has(otherUser.id)
+        : onlineUsers.has(otherUser.id) || otherUser.isOnline
+      : false;
 
     return {
       title: otherUser?.name || otherUser?.username || "Direct Chat",

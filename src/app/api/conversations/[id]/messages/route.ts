@@ -4,6 +4,7 @@ import sanitizeHtml from "sanitize-html";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sendMessageSchema } from "@/lib/validations/message";
+import { resolveMessageStatus } from "@/lib/utils";
 
 export async function GET(req: Request, context: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
@@ -30,6 +31,11 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
     if (!membership) {
       return NextResponse.json({ error: "Forbidden: Not a member" }, { status: 403 });
     }
+
+    const members = await prisma.conversationMember.findMany({
+      where: { conversationId },
+      select: { userId: true, lastReadAt: true },
+    });
 
     const messages = await prisma.message.findMany({
       where: {
@@ -100,9 +106,14 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
       nextCursor = nextItem?.id || null;
     }
 
-    // Return messages in chronological ascending order for chat window rendering
+    // Return messages in chronological ascending order with resolved tick status
+    const formattedMessages = messages.reverse().map((msg) => ({
+      ...msg,
+      status: resolveMessageStatus(msg, members),
+    }));
+
     return NextResponse.json({
-      messages: messages.reverse(),
+      messages: formattedMessages,
       nextCursor,
     });
   } catch (error: any) {

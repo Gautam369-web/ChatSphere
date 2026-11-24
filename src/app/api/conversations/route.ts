@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createConversationSchema } from "@/lib/validations/message";
+import { resolveMessageStatus } from "@/lib/utils";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -55,6 +56,12 @@ export async function GET() {
               },
             },
             reactions: true,
+            statuses: {
+              select: {
+                userId: true,
+                status: true,
+              },
+            },
           },
         },
         pinnedMessages: {
@@ -87,8 +94,14 @@ export async function GET() {
           },
         });
 
+        const formattedMessages = conv.messages.map((msg) => ({
+          ...msg,
+          status: resolveMessageStatus(msg, conv.members),
+        }));
+
         return {
           ...conv,
+          messages: formattedMessages,
           unreadCount,
         };
       })

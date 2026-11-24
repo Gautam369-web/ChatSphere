@@ -263,8 +263,21 @@ export function ChatLayout() {
     // Mark as read on server
     fetch(`/api/conversations/${activeConversationId}/read`, { method: "POST" }).catch(() => {});
 
+    // When tab regains focus/visibility while viewing this chat, mark new messages as read
+    const handleFocusOrVisible = () => {
+      if (typeof document !== "undefined" && !document.hidden) {
+        markAsRead(activeConversationId);
+        markConversationAsRead(activeConversationId);
+        fetch(`/api/conversations/${activeConversationId}/read`, { method: "POST" }).catch(() => {});
+      }
+    };
+    window.addEventListener("focus", handleFocusOrVisible);
+    document.addEventListener("visibilitychange", handleFocusOrVisible);
+
     return () => {
       isMounted = false;
+      window.removeEventListener("focus", handleFocusOrVisible);
+      document.removeEventListener("visibilitychange", handleFocusOrVisible);
       leaveConversation(activeConversationId);
     };
   }, [activeConversationId]);

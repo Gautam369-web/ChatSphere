@@ -107,6 +107,11 @@ export function useSocket() {
           conversationId: message.conversationId,
           readerId: session.user.id,
         });
+        fetch(`/api/conversations/${message.conversationId}/read`, { method: "POST" }).catch(() => {});
+        // Follow-up read sync in case sender's DB insert completed just after 0ms socket delivery
+        setTimeout(() => {
+          fetch(`/api/conversations/${message.conversationId}/read`, { method: "POST" }).catch(() => {});
+        }, 600);
       } else {
         socket.emit("message_delivered", {
           conversationId: message.conversationId,
@@ -149,34 +154,47 @@ export function useSocket() {
     // Real-time status update (Instant double tick & blue tick feedback)
     socket.on("message_status_update", ({ conversationId, messageId, status }: { conversationId: string; messageId: string; status: any }) => {
       const state = useChatStore.getState();
-      const currentMessages = state.messages[conversationId] || [];
-      const updated = currentMessages.map((msg) => {
+      const rank: Record<string, number> = { SENT: 1, DELIVERED: 2, SEEN: 3 };
+      const applyUpdate = (msg: MessageItem) => {
         if (msg.id === messageId || (msg.isOptimistic && msg.senderId === session?.user?.id)) {
+          const currentRank = rank[msg.status || "SENT"] || 1;
+          const nextRank = rank[status] || 1;
           return {
             ...msg,
-            status,
+            status: nextRank >= currentRank ? status : msg.status,
             isOptimistic: false,
           };
         }
         return msg;
-      });
-      state.setMessages(conversationId, updated);
+      };
+
+      const currentMessages = state.messages[conversationId] || [];
+      state.setMessages(conversationId, currentMessages.map(applyUpdate));
+
+      const updatedConvs = state.conversations.map((conv) =>
+        conv.id === conversationId
+          ? { ...conv, messages: conv.messages.map(applyUpdate) }
+          : conv
+      );
+      state.setConversations(updatedConvs);
     });
 
     socket.on("messages_seen", ({ conversationId, readerId }: { conversationId: string; readerId: string }) => {
       const state = useChatStore.getState();
+      const markSeen = (msg: MessageItem) =>
+        msg.senderId !== readerId
+          ? { ...msg, status: "SEEN" as any, isOptimistic: false }
+          : msg;
+
       const currentMessages = state.messages[conversationId] || [];
-      const updated = currentMessages.map((msg) => {
-        if (msg.senderId !== readerId) {
-          return {
-            ...msg,
-            status: "SEEN" as any,
-            isOptimistic: false,
-          };
-        }
-        return msg;
-      });
-      state.setMessages(conversationId, updated);
+      state.setMessages(conversationId, currentMessages.map(markSeen));
+
+      const updatedConvs = state.conversations.map((conv) =>
+        conv.id === conversationId
+          ? { ...conv, messages: conv.messages.map(markSeen) }
+          : conv
+      );
+      state.setConversations(updatedConvs);
     });
 
     socket.on("reaction_updated", ({ messageId, conversationId, action, reaction, emoji, userId }: any) => {
