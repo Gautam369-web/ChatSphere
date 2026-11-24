@@ -141,7 +141,7 @@ export function MessageBubble({
         setShowMoreMenu(false);
         setShowQuickReactions(false);
       }}
-      className={`group relative flex gap-2 my-1 px-1 sm:px-2 ${
+      className={`group relative flex gap-2 my-0.5 px-1 sm:px-2 ${
         isMine ? "justify-end" : "justify-start"
       }`}
     >
@@ -339,7 +339,7 @@ export function MessageBubble({
 
           {/* Bubble */}
           <div
-            className={`relative rounded-2xl px-2.5 py-1.5 sm:px-3 text-sm shadow-xs transition-all ${
+            className={`relative rounded-2xl px-2.5 py-1 text-sm shadow-xs transition-all ${
               isDeleted
                 ? "bg-slate-100 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/50 text-slate-400 italic"
                 : isMine
@@ -449,18 +449,18 @@ export function MessageBubble({
               {/* Text Message with WhatsApp-style compact inline/trailing timestamp */}
               {message.content && (!message.type || message.type === "TEXT") ? (
                 <div className="relative">
-                  <p className="text-[14px] leading-relaxed break-words text-left select-text m-0">
+                  <p className="text-[13.5px] sm:text-[14px] leading-snug break-words text-left select-text m-0">
                     <span>{message.content}</span>
                     {/* Inline spacer to reserve space for the bottom-right timestamp without breaking line */}
                     <span
                       className={`inline-block ${
-                        isMine ? "w-[58px]" : "w-[42px]"
-                      } h-3 select-none pointer-events-none`}
+                        isMine ? "w-[54px]" : "w-[38px]"
+                      } h-2.5 select-none pointer-events-none`}
                       aria-hidden="true"
                     />
                   </p>
                   <span
-                    className={`absolute right-0 bottom-0 inline-flex items-center gap-1 text-[10px] select-none shrink-0 whitespace-nowrap leading-none pb-0.5 ${
+                    className={`absolute right-0 bottom-0 inline-flex items-center gap-0.5 text-[10px] select-none shrink-0 whitespace-nowrap leading-none pb-0.5 ${
                       isMine ? "text-indigo-200" : "text-slate-400 dark:text-slate-400"
                     }`}
                   >
