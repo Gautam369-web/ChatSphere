@@ -59,6 +59,7 @@ export function MessageBubble({
   const isHorizontalSwipeRef = useRef<boolean | null>(null);
 
   const isDeleted = !!message.deletedAt;
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (isDeleted) return;
@@ -66,6 +67,15 @@ export function MessageBubble({
     touchStartYRef.current = e.touches[0].clientY;
     isHorizontalSwipeRef.current = null;
     setIsSwiping(true);
+
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = setTimeout(() => {
+      if (typeof navigator !== "undefined" && navigator.vibrate) {
+        try { navigator.vibrate(35); } catch {}
+      }
+      setShowActions(true);
+      setShowMoreMenu(true);
+    }, 450);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
@@ -74,6 +84,10 @@ export function MessageBubble({
     const currentY = e.touches[0].clientY;
     const diffX = currentX - touchStartXRef.current;
     const diffY = currentY - touchStartYRef.current;
+
+    if (Math.abs(diffX) > 8 || Math.abs(diffY) > 8) {
+      if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    }
 
     // Detect if movement is predominantly horizontal
     if (isHorizontalSwipeRef.current === null) {
@@ -93,6 +107,7 @@ export function MessageBubble({
   };
 
   const handleTouchEnd = () => {
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
     if (Math.abs(dragX) >= 36) {
       onReply(message);
       if (typeof navigator !== "undefined" && navigator.vibrate) {
@@ -136,6 +151,11 @@ export function MessageBubble({
   return (
     <div
       onMouseEnter={() => setShowActions(true)}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        setShowActions(true);
+        setShowMoreMenu(true);
+      }}
       onMouseLeave={() => {
         setShowActions(false);
         setShowMoreMenu(false);

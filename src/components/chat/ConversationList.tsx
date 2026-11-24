@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { formatTime, formatDateDivider } from "@/lib/utils";
 import { useChatStore } from "@/store/useChatStore";
@@ -20,6 +20,12 @@ import {
   Copy,
   Zap,
   RotateCw,
+  Trash2,
+  MoreVertical,
+  BellOff,
+  Mail,
+  X,
+  AlertTriangle,
 } from "lucide-react";
 
 interface ConversationListProps {
@@ -39,6 +45,7 @@ export function ConversationList({
     setConversations,
     setMessages,
     upsertConversation,
+    removeConversation,
     setActiveConversationId,
     activeConversationId,
     onlineUsers,
@@ -53,6 +60,61 @@ export function ConversationList({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [connectStatus, setConnectStatus] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  // WhatsApp-style long-press context menu & delete dialog state
+  const [selectedConvForMenu, setSelectedConvForMenu] = useState<ConversationItem | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isLongPressRef = useRef(false);
+  const touchStartPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  const handleItemTouchStart = (conv: ConversationItem, e: React.TouchEvent) => {
+    isLongPressRef.current = false;
+    touchStartPosRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = setTimeout(() => {
+      isLongPressRef.current = true;
+      if (typeof navigator !== "undefined" && navigator.vibrate) {
+        try { navigator.vibrate(40); } catch {}
+      }
+      setSelectedConvForMenu(conv);
+    }, 450);
+  };
+
+  const handleItemTouchMove = (e: React.TouchEvent) => {
+    const diffX = Math.abs(e.touches[0].clientX - touchStartPosRef.current.x);
+    const diffY = Math.abs(e.touches[0].clientY - touchStartPosRef.current.y);
+    if (diffX > 10 || diffY > 10) {
+      if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    }
+  };
+
+  const handleItemTouchEnd = () => {
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+  };
+
+  const handleDeleteChat = async () => {
+    if (!selectedConvForMenu) return;
+    try {
+      setIsDeleting(true);
+      const res = await fetch(`/api/conversations/${selectedConvForMenu.id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        removeConversation(selectedConvForMenu.id);
+        setShowDeleteConfirm(false);
+        setSelectedConvForMenu(null);
+        if (typeof navigator !== "undefined" && navigator.vibrate) {
+          try { navigator.vibrate(30); } catch {}
+        }
+      }
+    } catch (err) {
+      console.error("Failed to delete chat:", err);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const handleRefresh = async () => {
     try {
@@ -343,8 +405,21 @@ export function ConversationList({
             return (
               <div
                 key={conv.id}
-                onClick={() => onSelectConversation(conv.id)}
-                className={`p-3 rounded-2xl flex items-center gap-3 cursor-pointer transition-all duration-150 ${
+                onTouchStart={(e) => handleItemTouchStart(conv, e)}
+                onTouchMove={handleItemTouchMove}
+                onTouchEnd={handleItemTouchEnd}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setSelectedConvForMenu(conv);
+                }}
+                onClick={() => {
+                  if (isLongPressRef.current) {
+                    isLongPressRef.current = false;
+                    return;
+                  }
+                  onSelectConversation(conv.id);
+                }}
+                className={`p-3 rounded-2xl flex items-center gap-3 cursor-pointer transition-all duration-150 relative select-none ${
                   isSelected
                     ? "bg-indigo-50 dark:bg-indigo-600/15 border border-indigo-200 dark:border-indigo-500/30 shadow-sm"
                     : "hover:bg-slate-100 dark:hover:bg-slate-800/40 border border-transparent"
@@ -403,6 +478,137 @@ export function ConversationList({
           })
         )}
       </div>
+
+      {/* WhatsApp-Style Long-Press Bottom Sheet / Context Menu */}
+      {selectedConvForMenu && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 animate-in fade-in duration-200"
+          onClick={() => {
+            if (!showDeleteConfirm) setSelectedConvForMenu(null);
+          }}
+        >
+          <div
+            className="w-full sm:max-w-sm bg-white dark:bg-[#1f2c34] rounded-t-3xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden animate-in slide-in-from-bottom duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header info */}
+            <div className="p-4 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-700 shrink-0">
+                  <img
+                    src={getConversationDetails(selectedConvForMenu).avatar}
+                    alt={getConversationDetails(selectedConvForMenu).title}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="min-w-0">
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                    {getConversationDetails(selectedConvForMenu).title}
+                  </h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                    {selectedConvForMenu.isGroup
+                      ? `${selectedConvForMenu.members.length} members`
+                      : getConversationDetails(selectedConvForMenu).isOnline
+                      ? "Online"
+                      : "Direct message"}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedConvForMenu(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Menu Options */}
+            <div className="py-2 text-sm text-slate-700 dark:text-slate-200">
+              {/* Delete chat / Delete user */}
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="w-full px-5 py-3 flex items-center gap-3.5 hover:bg-rose-50 dark:hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 transition font-medium"
+              >
+                <Trash2 className="w-5 h-5 text-rose-500 shrink-0" />
+                <span>Delete chat</span>
+              </button>
+
+              {/* Pin / Unpin */}
+              <button
+                onClick={() => {
+                  setSelectedConvForMenu(null);
+                }}
+                className="w-full px-5 py-3 flex items-center gap-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition"
+              >
+                <Pin className="w-5 h-5 text-slate-400 shrink-0" />
+                <span>Pin chat</span>
+              </button>
+
+              {/* Mute */}
+              <button
+                onClick={() => {
+                  setSelectedConvForMenu(null);
+                }}
+                className="w-full px-5 py-3 flex items-center gap-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition"
+              >
+                <BellOff className="w-5 h-5 text-slate-400 shrink-0" />
+                <span>Mute notifications</span>
+              </button>
+
+              {/* Mark as unread */}
+              <button
+                onClick={() => {
+                  if (selectedConvForMenu) {
+                    const hasUnread = (selectedConvForMenu.unreadCount || 0) > 0;
+                    upsertConversation({ ...selectedConvForMenu, unreadCount: hasUnread ? 0 : 1 });
+                  }
+                  setSelectedConvForMenu(null);
+                }}
+                className="w-full px-5 py-3 flex items-center gap-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition"
+              >
+                <Mail className="w-5 h-5 text-slate-400 shrink-0" />
+                <span>
+                  {(selectedConvForMenu.unreadCount || 0) > 0 ? "Mark as read" : "Mark as unread"}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* WhatsApp-Style Delete Confirmation Modal */}
+      {showDeleteConfirm && selectedConvForMenu && (
+        <div className="fixed inset-0 z-60 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-sm bg-white dark:bg-[#233138] rounded-2xl p-5 shadow-2xl border border-slate-200 dark:border-slate-700 space-y-4">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">
+              Delete this chat?
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+              Messages and media with{" "}
+              <span className="font-semibold text-slate-900 dark:text-white">
+                {getConversationDetails(selectedConvForMenu).title}
+              </span>{" "}
+              will be permanently deleted.
+            </p>
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={isDeleting}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteChat}
+                disabled={isDeleting}
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-rose-600 hover:bg-rose-500 text-white shadow-md shadow-rose-600/30 transition flex items-center gap-1.5"
+              >
+                {isDeleting ? "Deleting..." : "Delete Chat"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

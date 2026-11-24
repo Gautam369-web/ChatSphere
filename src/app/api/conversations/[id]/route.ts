@@ -129,8 +129,13 @@ export async function DELETE(req: Request, context: { params: Promise<{ id: stri
       return NextResponse.json({ error: "Not a member" }, { status: 404 });
     }
 
-    // If owner of group, delete conversation entirely
-    if (member.role === "OWNER") {
+    const conversation = await prisma.conversation.findUnique({
+      where: { id },
+      select: { isGroup: true },
+    });
+
+    // If 1-to-1 direct chat OR group owner, delete conversation entirely
+    if (!conversation?.isGroup || member.role === "OWNER") {
       await prisma.conversation.delete({ where: { id } });
       return NextResponse.json({ message: "Conversation deleted" });
     }

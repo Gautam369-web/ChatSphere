@@ -40,6 +40,7 @@ interface ChatStore {
   setActiveCall: (call: ActiveCallState | null) => void;
   setSearchQuery: (query: string) => void;
   markConversationAsRead: (conversationId: string) => void;
+  removeConversation: (conversationId: string) => void;
 }
 
 export const useChatStore = create<ChatStore>((set, get) => ({
@@ -198,5 +199,18 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         c.id === conversationId ? { ...c, unreadCount: 0 } : c
       );
       return { conversations: updatedConvs };
+    }),
+
+  removeConversation: (conversationId) =>
+    set((state) => {
+      const nextConvs = state.conversations.filter((c) => c.id !== conversationId);
+      const nextMessages = { ...state.messages };
+      delete nextMessages[conversationId];
+      return {
+        conversations: nextConvs,
+        messages: nextMessages,
+        activeConversationId:
+          state.activeConversationId === conversationId ? null : state.activeConversationId,
+      };
     }),
 }));
