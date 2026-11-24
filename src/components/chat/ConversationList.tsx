@@ -193,7 +193,7 @@ export function ConversationList({
   };
 
   return (
-    <div className="w-full md:w-80 lg:w-96 h-full bg-slate-900/70 border-r border-slate-800/60 flex flex-col shrink-0">
+    <div className="w-full md:w-80 lg:w-96 h-full bg-slate-900/70 border-r border-slate-800/60 flex flex-col shrink-0 pb-16 md:pb-0">
       {/* Header & Search */}
       <div className="p-4 border-b border-slate-800/60 flex flex-col gap-3">
         <div className="flex items-center justify-between">

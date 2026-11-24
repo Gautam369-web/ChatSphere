@@ -100,7 +100,7 @@ export function ContactsView({ onStartChat }: ContactsViewProps) {
   });
 
   return (
-    <div className="flex-1 h-full overflow-y-auto bg-slate-950/60 p-6 md:p-10 max-w-4xl mx-auto">
+    <div className="flex-1 h-full overflow-y-auto bg-slate-950/60 p-4 md:p-10 max-w-4xl mx-auto pb-24 md:pb-10">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>

@@ -18,6 +18,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -27,7 +28,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="antialiased font-sans select-none overflow-hidden h-screen w-screen bg-slate-950 text-slate-100">
+      <body className="antialiased font-sans select-none overflow-hidden h-screen h-[100dvh] w-screen bg-slate-950 text-slate-100">
         <AppProviders>{children}</AppProviders>
       </body>
     </html>

@@ -351,7 +351,7 @@ export function ChatLayout() {
   const unreadTotal = conversations.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-950 font-sans">
+    <div className="flex h-screen h-[100dvh] w-screen overflow-hidden bg-slate-950 font-sans">
       {/* 1. Primary Left Navigation Bar */}
       <SidebarNav
         currentTab={currentTab}
@@ -362,6 +362,7 @@ export function ChatLayout() {
           }
         }}
         unreadTotal={unreadTotal}
+        isChatOpen={Boolean(activeConversationId)}
       />
 
       {/* 2. Middle Views based on tab */}

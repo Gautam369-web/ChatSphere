@@ -229,7 +229,7 @@ export function MessageBubble({
       )}
 
       {/* Main Bubble Content Container */}
-      <div className={`max-w-[78%] md:max-w-[65%] flex flex-col ${isMine ? "items-end" : "items-start"}`}>
+      <div className={`max-w-[86%] sm:max-w-[78%] md:max-w-[65%] flex flex-col ${isMine ? "items-end" : "items-start"}`}>
         {/* Sender Name in Group (for non-me) */}
         {!isMine && isGroup && (
           <span className="text-[11px] font-semibold text-indigo-400 mb-0.5 px-1">

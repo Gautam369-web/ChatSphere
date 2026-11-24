@@ -78,7 +78,7 @@ export function AdminView() {
   };
 
   return (
-    <div className="flex-1 h-full overflow-y-auto bg-slate-950/60 p-6 md:p-10 max-w-5xl mx-auto">
+    <div className="flex-1 h-full overflow-y-auto bg-slate-950/60 p-4 md:p-10 max-w-5xl mx-auto pb-24 md:pb-10">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2.5">

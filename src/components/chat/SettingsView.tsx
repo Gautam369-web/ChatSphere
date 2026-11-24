@@ -99,7 +99,7 @@ export function SettingsView() {
   };
 
   return (
-    <div className="flex-1 h-full overflow-y-auto bg-slate-950/60 p-6 md:p-10 max-w-4xl mx-auto">
+    <div className="flex-1 h-full overflow-y-auto bg-slate-950/60 p-4 md:p-10 max-w-4xl mx-auto pb-24 md:pb-10">
       <div className="mb-8">
         <h1 className="text-2xl font-bold tracking-tight text-white">Settings & Preferences</h1>
         <p className="text-sm text-slate-400 mt-1">

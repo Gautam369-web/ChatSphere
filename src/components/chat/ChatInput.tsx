@@ -269,7 +269,7 @@ export function ChatInput({
           </div>
 
           {/* Text input area */}
-          <div className="flex-1 relative">
+          <div className="flex-1 relative min-w-0">
             <textarea
               ref={textareaRef}
               rows={1}
@@ -277,13 +277,13 @@ export function ChatInput({
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
               onPaste={handlePaste}
-              placeholder="Type a message... (Enter to send, Shift+Enter for newline)"
-              className="w-full max-h-32 bg-slate-900/80 border border-slate-800 rounded-2xl py-2.5 px-4 text-sm text-white placeholder-slate-500 resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500/80 transition"
+              placeholder="Type a message..."
+              className="w-full max-h-32 bg-slate-900/80 border border-slate-800 rounded-2xl py-2 sm:py-2.5 px-3 sm:px-4 text-sm text-white placeholder-slate-500 resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500/80 transition"
             />
 
             {/* Emoji Picker Popover */}
             {showEmojiPicker && (
-              <div className="absolute bottom-full left-0 mb-3 z-30 shadow-2xl rounded-2xl overflow-hidden border border-slate-700 bg-slate-900">
+              <div className="absolute bottom-full left-0 mb-3 z-30 shadow-2xl rounded-2xl overflow-hidden border border-slate-700 bg-slate-900 max-w-[calc(100vw-24px)] scale-90 sm:scale-100 origin-bottom-left">
                 <EmojiPicker
                   onEmojiClick={(emojiData) => {
                     setContent((prev) => prev + emojiData.emoji);
