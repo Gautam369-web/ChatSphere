@@ -351,7 +351,7 @@ export function ChatLayout() {
   const unreadTotal = conversations.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
 
   return (
-    <div className="flex h-screen h-[100dvh] w-screen overflow-hidden bg-slate-950 font-sans">
+    <div className="flex h-screen h-[100dvh] w-screen overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans transition-colors duration-200">
       {/* 1. Primary Left Navigation Bar */}
       <SidebarNav
         currentTab={currentTab}
@@ -390,7 +390,7 @@ export function ChatLayout() {
           <main
             className={`${
               !activeConversationId ? "hidden md:flex" : "flex"
-            } flex-1 flex-col h-full bg-slate-950 min-w-0 relative`}
+            } flex-1 flex-col h-full bg-slate-100/50 dark:bg-slate-950 min-w-0 relative`}
           >
             {activeConversation ? (
               <>

@@ -241,10 +241,10 @@ export function MessageBubble({
         <div
           className={`relative rounded-2xl px-3.5 py-2 text-sm shadow-md transition-all ${
             isDeleted
-              ? "bg-slate-800/40 border border-slate-700/50 text-slate-400 italic"
+              ? "bg-slate-100 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/50 text-slate-400 italic"
               : isMine
               ? "bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white rounded-br-none shadow-indigo-900/20"
-              : "bg-slate-800/90 text-slate-100 rounded-bl-none border border-slate-700/60 shadow-black/20"
+              : "bg-white dark:bg-slate-850 text-slate-900 dark:text-slate-100 rounded-bl-none border border-slate-200 dark:border-slate-700/60 shadow-sm"
           }`}
         >
           {/* Reply Quote Banner */}

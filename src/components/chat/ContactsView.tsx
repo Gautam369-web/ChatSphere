@@ -100,15 +100,15 @@ export function ContactsView({ onStartChat }: ContactsViewProps) {
   });
 
   return (
-    <div className="flex-1 h-full overflow-y-auto bg-slate-950/60 p-4 md:p-10 max-w-4xl mx-auto pb-24 md:pb-10">
+    <div className="flex-1 h-full overflow-y-auto bg-slate-50/70 dark:bg-slate-950/60 p-4 md:p-10 max-w-4xl mx-auto pb-24 md:pb-10 transition-colors duration-200">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2.5">
-            <UserCheck className="w-6 h-6 text-indigo-400" />
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2.5">
+            <UserCheck className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
             <span>Contacts & Connections</span>
           </h1>
-          <p className="text-sm text-slate-400 mt-1">Manage friends, requests, and direct connections</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Manage friends, requests, and direct connections</p>
         </div>
 
         <button
@@ -121,17 +121,17 @@ export function ContactsView({ onStartChat }: ContactsViewProps) {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-slate-800 mb-6">
+      <div className="flex border-b border-slate-200 dark:border-slate-800 mb-6">
         <button
           onClick={() => setTab("contacts")}
           className={`pb-3 px-4 text-xs font-semibold border-b-2 transition flex items-center gap-2 ${
             tab === "contacts"
-              ? "border-indigo-500 text-indigo-400"
-              : "border-transparent text-slate-400 hover:text-white"
+              ? "border-indigo-600 text-indigo-600 dark:border-indigo-500 dark:text-indigo-400"
+              : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
           }`}
         >
           <span>All Contacts</span>
-          <span className="px-1.5 py-0.5 rounded-full bg-slate-800 text-[10px]">
+          <span className="px-1.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px]">
             {contacts.length}
           </span>
         </button>
@@ -140,8 +140,8 @@ export function ContactsView({ onStartChat }: ContactsViewProps) {
           onClick={() => setTab("received")}
           className={`pb-3 px-4 text-xs font-semibold border-b-2 transition flex items-center gap-2 ${
             tab === "received"
-              ? "border-indigo-500 text-indigo-400"
-              : "border-transparent text-slate-400 hover:text-white"
+              ? "border-indigo-600 text-indigo-600 dark:border-indigo-500 dark:text-indigo-400"
+              : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
           }`}
         >
           <span>Pending Requests</span>
@@ -156,12 +156,12 @@ export function ContactsView({ onStartChat }: ContactsViewProps) {
           onClick={() => setTab("sent")}
           className={`pb-3 px-4 text-xs font-semibold border-b-2 transition flex items-center gap-2 ${
             tab === "sent"
-              ? "border-indigo-500 text-indigo-400"
-              : "border-transparent text-slate-400 hover:text-white"
+              ? "border-indigo-600 text-indigo-600 dark:border-indigo-500 dark:text-indigo-400"
+              : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
           }`}
         >
           <span>Sent Requests</span>
-          <span className="px-1.5 py-0.5 rounded-full bg-slate-800 text-[10px]">
+          <span className="px-1.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px]">
             {sentRequests.length}
           </span>
         </button>
@@ -171,13 +171,13 @@ export function ContactsView({ onStartChat }: ContactsViewProps) {
       {tab === "contacts" && (
         <div className="space-y-4">
           <div className="relative">
-            <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Filter contacts..."
-              className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-xl py-2 pl-10 pr-4 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="w-full max-w-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl py-2 pl-10 pr-4 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             />
           </div>
 
