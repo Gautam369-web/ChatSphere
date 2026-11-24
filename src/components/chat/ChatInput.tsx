@@ -55,9 +55,11 @@ export function ChatInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Auto focus input
+  // Auto focus input on desktop
   useEffect(() => {
-    textareaRef.current?.focus();
+    if (typeof window !== "undefined" && window.innerWidth > 768) {
+      textareaRef.current?.focus();
+    }
   }, [conversationId, replyingTo]);
 
   // Handle typing debounce
@@ -277,8 +279,11 @@ export function ChatInput({
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
               onPaste={handlePaste}
+              enterKeyHint="send"
+              autoCapitalize="sentences"
+              autoCorrect="on"
               placeholder="Type a message..."
-              className="w-full max-h-32 bg-slate-900/80 border border-slate-800 rounded-2xl py-2 sm:py-2.5 px-3 sm:px-4 text-sm text-white placeholder-slate-500 resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500/80 transition"
+              className="w-full max-h-32 bg-slate-100 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-2xl py-2 sm:py-2.5 px-3 sm:px-4 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500/80 transition select-text"
             />
 
             {/* Emoji Picker Popover */}

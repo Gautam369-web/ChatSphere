@@ -58,9 +58,14 @@ body {
   width: 100%;
   overflow: hidden;
   overscroll-behavior: none;
-  touch-action: manipulation;
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
+}
+
+input,
+textarea {
+  user-select: text !important;
+  -webkit-user-select: text !important;
 }
 
 /* Custom modern scrollbars */
