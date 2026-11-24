@@ -42,6 +42,7 @@ services:
       dockerfile: Dockerfile
     container_name: chatsphere-app
     restart: always
+    command: ["npm", "run", "start:web"]
     depends_on:
       postgres:
         condition: service_healthy
