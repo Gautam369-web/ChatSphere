@@ -516,7 +516,7 @@ export function ChatLayout() {
 
     const otherMember = activeConv.members.find((m) => m.userId !== currentUser.id);
     if (otherMember) {
-      emitCall(otherMember.userId, callType, activeConv.id);
+      emitCall(otherMember.userId, callType, activeConv.id, otherMember.user);
     }
   };
 

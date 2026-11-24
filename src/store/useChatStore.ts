@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { ConversationItem, MessageItem, UserSummary } from "@/types";
 
-interface ActiveCallState {
+export interface ActiveCallState {
   caller: {
     id: string;
     name: string | null;
@@ -11,6 +11,7 @@ interface ActiveCallState {
   callType: "audio" | "video";
   conversationId: string;
   status: "incoming" | "outgoing" | "connected";
+  offer?: any;
 }
 
 interface ChatStore {

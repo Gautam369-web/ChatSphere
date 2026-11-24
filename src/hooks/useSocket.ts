@@ -192,28 +192,44 @@ export function useSocket() {
     });
 
     // Call signaling events
-    socket.on("incoming_call", ({ caller, callType, conversationId }: any) => {
+    socket.on("incoming_call", ({ caller, callType, conversationId, offer }: any) => {
       setActiveCall({
         caller,
         callType,
         conversationId,
         status: "incoming",
+        offer,
       });
     });
 
-    socket.on("call_accepted", () => {
+    socket.on("call_accepted", ({ from, answer }: any) => {
       const current = useChatStore.getState().activeCall;
       if (current) {
         setActiveCall({ ...current, status: "connected" });
+      }
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("chatsphere:call_accepted", { detail: { from, answer } }));
+      }
+    });
+
+    socket.on("call_signal", ({ from, signal }: any) => {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("chatsphere:call_signal", { detail: { from, signal } }));
       }
     });
 
     socket.on("call_rejected", () => {
       setActiveCall(null);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("chatsphere:call_rejected"));
+      }
     });
 
     socket.on("call_ended", () => {
       setActiveCall(null);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("chatsphere:call_ended"));
+      }
     });
 
     return () => {
@@ -264,41 +280,38 @@ export function useSocket() {
   }, []);
 
   const emitCall = useCallback(
-    (recipientId: string, callType: "audio" | "video", conversationId: string) => {
-      if (!session?.user) return;
-      socketRef.current?.emit("call_initiate", {
-        recipientId,
-        callType,
-        conversationId,
-        caller: {
-          id: session.user.id,
-          name: session.user.name,
-          username: session.user.username,
-          image: session.user.image,
-        },
-      });
+    (
+      recipientId: string,
+      callType: "audio" | "video",
+      conversationId: string,
+      recipientUser?: { name?: string | null; username?: string; image?: string | null }
+    ) => {
       setActiveCall({
         caller: {
           id: recipientId,
-          name: "Calling...",
-          username: "",
-          image: null,
+          name: recipientUser?.name || recipientUser?.username || "Calling...",
+          username: recipientUser?.username || "",
+          image: recipientUser?.image || null,
         },
         callType,
         conversationId,
         status: "outgoing",
       });
     },
-    [session?.user, setActiveCall]
+    [setActiveCall]
   );
+
+  const sendCallSignal = useCallback((to: string, signal: any) => {
+    socketRef.current?.emit("call_signal", { to, signal });
+  }, []);
 
   const endCall = useCallback((recipientId: string, conversationId: string) => {
     socketRef.current?.emit("call_end", { to: recipientId, conversationId });
     setActiveCall(null);
   }, [setActiveCall]);
 
-  const acceptCall = useCallback((recipientId: string) => {
-    socketRef.current?.emit("call_accept", { to: recipientId });
+  const acceptCall = useCallback((recipientId: string, answer?: any) => {
+    socketRef.current?.emit("call_accept", { to: recipientId, answer });
     const current = useChatStore.getState().activeCall;
     if (current) {
       setActiveCall({ ...current, status: "connected" });
@@ -321,6 +334,7 @@ export function useSocket() {
       markAsRead,
       emitReaction,
       emitCall,
+      sendCallSignal,
       endCall,
       acceptCall,
       rejectCall,
@@ -334,6 +348,7 @@ export function useSocket() {
       markAsRead,
       emitReaction,
       emitCall,
+      sendCallSignal,
       endCall,
       acceptCall,
       rejectCall,
