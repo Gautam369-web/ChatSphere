@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { formatTime } from "@/lib/utils";
 import { MessageItem, UserSummary } from "@/types";
 import {
@@ -51,7 +51,61 @@ export function MessageBubble({
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showQuickReactions, setShowQuickReactions] = useState(false);
 
+  // WhatsApp-style swipe to reply state
+  const [dragX, setDragX] = useState(0);
+  const [isSwiping, setIsSwiping] = useState(false);
+  const touchStartXRef = useRef(0);
+  const touchStartYRef = useRef(0);
+  const isHorizontalSwipeRef = useRef<boolean | null>(null);
+
   const isDeleted = !!message.deletedAt;
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (isDeleted) return;
+    touchStartXRef.current = e.touches[0].clientX;
+    touchStartYRef.current = e.touches[0].clientY;
+    isHorizontalSwipeRef.current = null;
+    setIsSwiping(true);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (isDeleted || !isSwiping) return;
+    const currentX = e.touches[0].clientX;
+    const currentY = e.touches[0].clientY;
+    const diffX = currentX - touchStartXRef.current;
+    const diffY = currentY - touchStartYRef.current;
+
+    // Detect if movement is predominantly horizontal
+    if (isHorizontalSwipeRef.current === null) {
+      if (Math.abs(diffX) > 6 || Math.abs(diffY) > 6) {
+        isHorizontalSwipeRef.current = Math.abs(diffX) > Math.abs(diffY);
+      }
+    }
+
+    if (!isHorizontalSwipeRef.current) return;
+
+    // WhatsApp swipe to right gesture
+    if (diffX > 0) {
+      const damped = diffX > 48 ? 48 + (diffX - 48) * 0.25 : diffX;
+      setDragX(Math.min(damped, 75));
+    } else {
+      setDragX(0);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (dragX >= 42) {
+      onReply(message);
+      if (typeof navigator !== "undefined" && navigator.vibrate) {
+        try {
+          navigator.vibrate(25);
+        } catch {}
+      }
+    }
+    setIsSwiping(false);
+    setDragX(0);
+    isHorizontalSwipeRef.current = null;
+  };
 
   // Quick reaction emojis
   const quickEmojis = ["👍", "❤️", "😂", "🔥", "🎉", "👀"];
@@ -228,25 +282,55 @@ export function MessageBubble({
         </div>
       )}
 
-      {/* Main Bubble Content Container */}
-      <div className={`w-fit max-w-[85%] sm:max-w-[70%] md:max-w-[55%] flex flex-col ${isMine ? "items-end" : "items-start"}`}>
-        {/* Sender Name in Group (for non-me) */}
-        {!isMine && isGroup && (
-          <span className="text-[11px] font-semibold text-indigo-400 mb-0.5 px-1">
-            {message.sender?.name || message.sender?.username}
-          </span>
+      {/* Main Bubble Content Container with WhatsApp swipe-to-reply */}
+      <div className="relative flex items-center">
+        {/* Animated Swipe Reply Indicator */}
+        {dragX > 0 && (
+          <div
+            style={{
+              transform: `translateY(-50%) scale(${Math.min(dragX / 36, 1)})`,
+              opacity: Math.min(dragX / 26, 1),
+            }}
+            className={`absolute -left-9 top-1/2 z-10 w-7 h-7 rounded-full flex items-center justify-center pointer-events-none transition-colors ${
+              dragX >= 42
+                ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/40"
+                : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-200"
+            }`}
+          >
+            <Reply className={`w-3.5 h-3.5 transition-transform duration-150 ${dragX >= 42 ? "scale-110 -rotate-12" : ""}`} />
+          </div>
         )}
 
-        {/* Bubble */}
         <div
-          className={`relative rounded-2xl px-3 py-1.5 text-sm shadow-xs transition-all ${
-            isDeleted
-              ? "bg-slate-100 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/50 text-slate-400 italic"
-              : isMine
-              ? "bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white rounded-tr-xs shadow-indigo-900/10"
-              : "bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-tl-xs border border-slate-200/80 dark:border-slate-700/60 shadow-xs"
-          }`}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onTouchCancel={handleTouchEnd}
+          style={{
+            transform: `translateX(${dragX}px)`,
+            transition: isSwiping ? "none" : "transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)",
+          }}
+          className={`w-fit max-w-[85%] sm:max-w-[70%] md:max-w-[55%] flex flex-col ${
+            isMine ? "items-end" : "items-start"
+          } touch-pan-y`}
         >
+          {/* Sender Name in Group (for non-me) */}
+          {!isMine && isGroup && (
+            <span className="text-[11px] font-semibold text-indigo-400 mb-0.5 px-1">
+              {message.sender?.name || message.sender?.username}
+            </span>
+          )}
+
+          {/* Bubble */}
+          <div
+            className={`relative rounded-2xl px-3 py-1.5 text-sm shadow-xs transition-all ${
+              isDeleted
+                ? "bg-slate-100 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/50 text-slate-400 italic"
+                : isMine
+                ? "bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white rounded-tr-xs shadow-indigo-900/10"
+                : "bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-tl-xs border border-slate-200/80 dark:border-slate-700/60 shadow-xs"
+            }`}
+          >
           {/* Reply Quote Banner */}
           {message.replyTo && !isDeleted && (
             <div
@@ -439,5 +523,6 @@ export function MessageBubble({
         )}
       </div>
     </div>
+  </div>
   );
 }
