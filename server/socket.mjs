@@ -97,8 +97,8 @@ io.on("connection", (socket) => {
   socket.on("send_message", (message) => {
     if (!message || !message.conversationId) return;
     
-    // Broadcast message to everyone in the conversation room
-    io.to(`conversation:${message.conversationId}`).emit("receive_message", message);
+    // Broadcast message to everyone ELSE in the conversation room immediately
+    socket.to(`conversation:${message.conversationId}`).emit("receive_message", message);
     
     // Also notify individual user rooms for conversation list preview updates
     if (message.conversationMembers && Array.isArray(message.conversationMembers)) {

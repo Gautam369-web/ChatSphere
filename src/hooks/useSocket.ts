@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { io, Socket } from "socket.io-client";
 import { useChatStore } from "@/store/useChatStore";
 import { MessageItem } from "@/types";
+import { sounds } from "@/lib/sound";
 
 let socketInstance: Socket | null = null;
 
@@ -63,6 +64,7 @@ export function useSocket() {
     });
 
     socket.on("receive_message", (message: MessageItem) => {
+      sounds.playReceived();
       addMessage(message.conversationId, message);
     });
 

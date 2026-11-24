@@ -18,6 +18,7 @@ import { ContactsView } from "./ContactsView";
 import { AdminView } from "./AdminView";
 import { MessageItem, UserSummary } from "@/types";
 import { MessageSquare, Sparkles } from "lucide-react";
+import { sounds } from "@/lib/sound";
 
 export function ChatLayout() {
   const { data: session } = useSession();
@@ -108,8 +109,8 @@ export function ChatLayout() {
     };
   }, [activeConversationId, joinConversation, leaveConversation, markAsRead, markConversationAsRead, setMessages]);
 
-  // 3. Handle Send Message (Optimistic UI)
-  const handleSendMessage = async (payload: {
+  // 3. Handle Send Message (Instant WhatsApp-style delivery)
+  const handleSendMessage = (payload: {
     content?: string;
     type?: any;
     replyToId?: string | null;
@@ -120,9 +121,9 @@ export function ChatLayout() {
   }) => {
     if (!activeConversationId || !currentUser) return;
 
-    const tempId = `temp_${Date.now()}`;
-    const optimisticMessage: MessageItem = {
-      id: tempId,
+    const instantId = `msg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const instantMessage: MessageItem = {
+      id: instantId,
       conversationId: activeConversationId,
       senderId: currentUser.id,
       content: payload.content || null,
@@ -138,38 +139,34 @@ export function ChatLayout() {
       updatedAt: new Date().toISOString(),
       sender: currentUser,
       reactions: [],
-      status: "SENDING" as any,
-      isOptimistic: true,
+      status: "SENT" as any, // Instant single tick like WhatsApp
     };
 
-    // Add optimistic message to store
-    addMessage(activeConversationId, optimisticMessage);
+    // 1. Instantly render on screen & play sent chime (0ms latency!)
+    addMessage(activeConversationId, instantMessage);
+    sounds.playSent();
 
-    try {
-      const res = await fetch(`/api/conversations/${activeConversationId}/messages`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+    // 2. Instantly push to WebSocket room without waiting for DB roundtrip (<15ms!)
+    const activeConv = conversations.find((c) => c.id === activeConversationId);
+    const memberIds = activeConv?.members.map((m) => m.userId) || [];
+    emitSendMessage(instantMessage, memberIds);
+
+    // 3. Non-blocking asynchronous database persistence
+    fetch(`/api/conversations/${activeConversationId}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+      .then(async (res) => {
+        if (res.ok) {
+          const data = await res.json();
+          // Silently update temporary client ID with permanent database ID
+          updateMessage(activeConversationId, instantId, { id: data.message.id });
+        }
+      })
+      .catch((err) => {
+        console.error("Background message persist error:", err);
       });
-
-      if (res.ok) {
-        const data = await res.json();
-        const serverMessage = data.message;
-
-        // Replace optimistic message with confirmed server message
-        addMessage(activeConversationId, serverMessage);
-
-        // Emit through socket to other conversation members
-        const activeConv = conversations.find((c) => c.id === activeConversationId);
-        const memberIds = activeConv?.members.map((m) => m.userId) || [];
-        emitSendMessage(serverMessage, memberIds);
-      } else {
-        removeMessage(activeConversationId, tempId);
-      }
-    } catch (err) {
-      console.error("Failed to send message:", err);
-      removeMessage(activeConversationId, tempId);
-    }
   };
 
   // 4. Reactions
