@@ -141,7 +141,7 @@ export function MessageBubble({
         setShowMoreMenu(false);
         setShowQuickReactions(false);
       }}
-      className={`group relative flex gap-2 my-[1.5px] px-1 sm:px-2 ${
+      className={`group relative flex gap-1.5 my-[1px] px-1 sm:px-2 ${
         isMine ? "justify-end" : "justify-start"
       }`}
     >
@@ -339,7 +339,7 @@ export function MessageBubble({
 
           {/* Bubble */}
           <div
-            className={`relative rounded-lg px-2.5 py-1 text-sm shadow-xs transition-all ${
+            className={`relative rounded-[7.5px] px-2 py-0.5 sm:px-2.5 sm:py-1 text-sm shadow-xs transition-all ${
               isDeleted
                 ? "bg-slate-100 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/50 text-slate-400 italic"
                 : isMine
@@ -448,27 +448,27 @@ export function MessageBubble({
 
               {/* Text Message with WhatsApp-style compact inline/trailing timestamp */}
               {message.content && (!message.type || message.type === "TEXT") ? (
-                <div className="text-[14.2px] leading-[19px] break-words text-left select-text">
+                <div className="text-[13.5px] leading-[17.5px] break-words text-left select-text">
                   <span>{message.content}</span>
                   <span
-                    className={`float-right ml-2.5 mt-1 inline-flex items-center gap-1 text-[11px] leading-none select-none shrink-0 whitespace-nowrap ${
+                    className={`float-right ml-2 mt-[2px] inline-flex items-center gap-0.5 text-[10px] leading-none select-none shrink-0 whitespace-nowrap ${
                       isMine ? "text-emerald-100/80 dark:text-[#8696a0]" : "text-slate-400 dark:text-[#8696a0]"
                     }`}
                   >
-                    {message.editedAt && <span className="text-[9px] opacity-80">(edited)</span>}
-                    {message.isStarred && <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />}
-                    {message.isPinned && <Pin className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />}
+                    {message.editedAt && <span className="text-[8.5px] opacity-80">(edited)</span>}
+                    {message.isStarred && <Star className="w-2 h-2 fill-amber-400 text-amber-400" />}
+                    {message.isPinned && <Pin className="w-2 h-2 fill-amber-400 text-amber-400" />}
                     <span>{formatTime(message.createdAt)}</span>
                     {isMine && (
                       <span className="ml-0.5">
                         {message.isOptimistic ? (
-                          <Clock className="w-3 h-3 text-emerald-200 animate-spin" />
+                          <Clock className="w-2.5 h-2.5 text-emerald-200 animate-spin" />
                         ) : message.status === "SEEN" ? (
-                          <CheckCheck className="w-3.5 h-3.5 text-cyan-300 dark:text-[#53bdeb]" />
+                          <CheckCheck className="w-3 h-3 text-cyan-300 dark:text-[#53bdeb]" />
                         ) : message.status === "DELIVERED" ? (
-                          <CheckCheck className="w-3.5 h-3.5 text-emerald-100 dark:text-[#8696a0]" />
+                          <CheckCheck className="w-3 h-3 text-emerald-100 dark:text-[#8696a0]" />
                         ) : (
-                          <Check className="w-3.5 h-3.5 text-emerald-100 dark:text-[#8696a0]" />
+                          <Check className="w-3 h-3 text-emerald-100 dark:text-[#8696a0]" />
                         )}
                       </span>
                     )}
