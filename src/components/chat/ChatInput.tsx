@@ -88,9 +88,13 @@ export function ChatInput({
     onStopTyping();
     setShowEmojiPicker(false);
 
-    // Reset textarea height
+    // Reset textarea height and keep focused so mobile keyboard never closes
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
+      textareaRef.current.focus();
+      requestAnimationFrame(() => {
+        textareaRef.current?.focus();
+      });
     }
   };
 
@@ -306,7 +310,15 @@ export function ChatInput({
             {content.trim() ? (
               <button
                 type="button"
-                onClick={handleSend}
+                onMouseDown={(e) => e.preventDefault()}
+                onTouchStart={(e) => {
+                  // Prevent touch focus shifting away from textarea
+                  textareaRef.current?.focus();
+                }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleSend();
+                }}
                 title="Send Message"
                 className="p-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 active:scale-95 transition"
               >
@@ -315,6 +327,7 @@ export function ChatInput({
             ) : (
               <button
                 type="button"
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={startVoiceRecording}
                 title="Record Voice Note"
                 className="p-2.5 rounded-2xl text-slate-400 hover:text-white hover:bg-slate-800/80 active:scale-95 transition"
