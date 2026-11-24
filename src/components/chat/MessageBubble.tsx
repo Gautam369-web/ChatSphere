@@ -229,7 +229,7 @@ export function MessageBubble({
       )}
 
       {/* Main Bubble Content Container */}
-      <div className={`max-w-[86%] sm:max-w-[78%] md:max-w-[65%] flex flex-col ${isMine ? "items-end" : "items-start"}`}>
+      <div className={`w-fit max-w-[85%] sm:max-w-[70%] md:max-w-[55%] flex flex-col ${isMine ? "items-end" : "items-start"}`}>
         {/* Sender Name in Group (for non-me) */}
         {!isMine && isGroup && (
           <span className="text-[11px] font-semibold text-indigo-400 mb-0.5 px-1">
@@ -239,21 +239,27 @@ export function MessageBubble({
 
         {/* Bubble */}
         <div
-          className={`relative rounded-2xl px-3.5 py-2 text-sm shadow-md transition-all ${
+          className={`relative rounded-2xl px-3 py-1.5 text-sm shadow-xs transition-all ${
             isDeleted
               ? "bg-slate-100 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/50 text-slate-400 italic"
               : isMine
-              ? "bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white rounded-br-none shadow-indigo-900/20"
-              : "bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-bl-none border border-slate-200 dark:border-slate-700/60 shadow-sm"
+              ? "bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white rounded-tr-xs shadow-indigo-900/10"
+              : "bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-tl-xs border border-slate-200/80 dark:border-slate-700/60 shadow-xs"
           }`}
         >
           {/* Reply Quote Banner */}
           {message.replyTo && !isDeleted && (
-            <div className="mb-2 p-2 rounded-xl bg-black/20 border-l-2 border-indigo-400 text-xs">
-              <span className="font-semibold text-indigo-300 block">
+            <div
+              className={`mb-1.5 p-1.5 rounded-lg text-xs border-l-3 ${
+                isMine
+                  ? "bg-black/15 border-white/60 text-indigo-100"
+                  : "bg-slate-100 dark:bg-slate-900/80 border-indigo-500 text-slate-600 dark:text-slate-300"
+              }`}
+            >
+              <span className="font-semibold block text-[11px] truncate">
                 {message.replyTo.sender?.name || "Reply"}
               </span>
-              <span className="text-slate-300 line-clamp-1">
+              <span className="line-clamp-1 opacity-80 text-[11px]">
                 {message.replyTo.content || (message.replyTo.type === "IMAGE" ? "Photo" : "Attachment")}
               </span>
             </div>
@@ -268,7 +274,7 @@ export function MessageBubble({
             <>
               {/* Media: Image */}
               {message.type === "IMAGE" && message.mediaUrl && (
-                <div className="mb-2 rounded-xl overflow-hidden max-w-sm max-h-72 bg-black/30">
+                <div className="mb-1.5 rounded-xl overflow-hidden max-w-sm max-h-72 bg-black/30">
                   <img
                     src={message.mediaUrl}
                     alt="attachment"
@@ -280,7 +286,7 @@ export function MessageBubble({
 
               {/* Media: Video */}
               {message.type === "VIDEO" && message.mediaUrl && (
-                <div className="mb-2 rounded-xl overflow-hidden max-w-sm bg-black/40">
+                <div className="mb-1.5 rounded-xl overflow-hidden max-w-sm bg-black/40">
                   <video src={message.mediaUrl} controls className="w-full max-h-64 rounded-xl" />
                 </div>
               )}
@@ -290,9 +296,9 @@ export function MessageBubble({
                 <div className="flex items-center gap-3 py-1 min-w-[200px]">
                   <button
                     onClick={toggleAudio}
-                    className="w-9 h-9 rounded-full bg-white text-indigo-600 flex items-center justify-center shadow transition active:scale-95"
+                    className="w-8 h-8 rounded-full bg-white text-indigo-600 flex items-center justify-center shadow transition active:scale-95"
                   >
-                    {isPlayingAudio ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
+                    {isPlayingAudio ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-0.5" />}
                   </button>
 
                   <div className="flex-1 flex items-center gap-1 h-6">
@@ -316,8 +322,8 @@ export function MessageBubble({
               {/* Media: File / Document */}
               {message.type === "FILE" && (
                 <div className="flex items-center gap-3 p-2 rounded-xl bg-black/20 my-1">
-                  <div className="w-10 h-10 rounded-lg bg-indigo-500/20 text-indigo-300 flex items-center justify-center shrink-0">
-                    <FileText className="w-5 h-5" />
+                  <div className="w-9 h-9 rounded-lg bg-indigo-500/20 text-indigo-300 flex items-center justify-center shrink-0">
+                    <FileText className="w-4 h-4" />
                   </div>
                   <div className="flex-1 min-w-0 text-xs">
                     <p className="font-semibold truncate">{message.fileName || "Document.pdf"}</p>
@@ -334,48 +340,81 @@ export function MessageBubble({
                       className="p-1.5 rounded-lg hover:bg-white/10 transition"
                       title="Download File"
                     >
-                      <Download className="w-4 h-4" />
+                      <Download className="w-3.5 h-3.5" />
                     </a>
                   )}
                 </div>
               )}
 
-              {/* Text Content */}
-              {message.content && (
-                <p className="whitespace-pre-wrap break-words leading-relaxed">
-                  {message.content}
-                </p>
+              {/* Text Message with WhatsApp-style compact inline/trailing timestamp */}
+              {message.content && (!message.type || message.type === "TEXT") ? (
+                <div className="flex flex-wrap items-baseline justify-end gap-x-2 gap-y-0.5">
+                  <span className="text-[14px] leading-relaxed break-words text-left select-text">
+                    {message.content}
+                  </span>
+                  <span
+                    className={`inline-flex items-center gap-1 text-[10px] select-none shrink-0 ml-auto pt-0.5 ${
+                      isMine ? "text-indigo-200" : "text-slate-400 dark:text-slate-400"
+                    }`}
+                  >
+                    {message.editedAt && <span className="text-[9px] opacity-80">(edited)</span>}
+                    {message.isStarred && <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />}
+                    {message.isPinned && <Pin className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />}
+                    <span>{formatTime(message.createdAt)}</span>
+                    {isMine && (
+                      <span className="ml-0.5">
+                        {message.isOptimistic ? (
+                          <Clock className="w-3 h-3 text-indigo-300 animate-spin" />
+                        ) : message.status === "SEEN" ? (
+                          <CheckCheck className="w-3.5 h-3.5 text-cyan-300" />
+                        ) : message.status === "DELIVERED" ? (
+                          <CheckCheck className="w-3.5 h-3.5 text-indigo-200" />
+                        ) : (
+                          <Check className="w-3.5 h-3.5 text-indigo-200" />
+                        )}
+                      </span>
+                    )}
+                  </span>
+                </div>
+              ) : (
+                message.content && (
+                  <p className="whitespace-pre-wrap break-words leading-relaxed text-[14px]">
+                    {message.content}
+                  </p>
+                )
               )}
             </>
           )}
 
-          {/* Footer Metadata: Timestamp, Edited flag, Pin/Star, Status Double-Ticks */}
-          <div
-            className={`flex items-center gap-1.5 mt-1 text-[10px] select-none ${
-              isMine ? "text-indigo-200 justify-end" : "text-slate-400 justify-start"
-            }`}
-          >
-            {message.editedAt && <span>(edited)</span>}
-            {message.isStarred && <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />}
-            {message.isPinned && <Pin className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />}
+          {/* Footer Metadata for Non-Text or Media Messages */}
+          {(!(!message.type || message.type === "TEXT") || isDeleted) && (
+            <div
+              className={`flex items-center gap-1.5 mt-1 text-[10px] select-none ${
+                isMine ? "text-indigo-200 justify-end" : "text-slate-400 justify-start"
+              }`}
+            >
+              {message.editedAt && <span>(edited)</span>}
+              {message.isStarred && <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />}
+              {message.isPinned && <Pin className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />}
 
-            <span>{formatTime(message.createdAt)}</span>
+              <span>{formatTime(message.createdAt)}</span>
 
-            {/* Status indicator for my messages */}
-            {isMine && (
-              <span className="ml-0.5">
-                {message.isOptimistic ? (
-                  <Clock className="w-3 h-3 text-indigo-300 animate-spin" />
-                ) : message.status === "SEEN" ? (
-                  <CheckCheck className="w-3.5 h-3.5 text-cyan-300" />
-                ) : message.status === "DELIVERED" ? (
-                  <CheckCheck className="w-3.5 h-3.5 text-indigo-200" />
-                ) : (
-                  <Check className="w-3.5 h-3.5 text-indigo-200" />
-                )}
-              </span>
-            )}
-          </div>
+              {/* Status indicator for my messages */}
+              {isMine && (
+                <span className="ml-0.5">
+                  {message.isOptimistic ? (
+                    <Clock className="w-3 h-3 text-indigo-300 animate-spin" />
+                  ) : message.status === "SEEN" ? (
+                    <CheckCheck className="w-3.5 h-3.5 text-cyan-300" />
+                  ) : message.status === "DELIVERED" ? (
+                    <CheckCheck className="w-3.5 h-3.5 text-indigo-200" />
+                  ) : (
+                    <Check className="w-3.5 h-3.5 text-indigo-200" />
+                  )}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Reactions Row below Bubble */}

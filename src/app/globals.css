@@ -112,3 +112,14 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
 }
+
+/* WhatsApp Subtle Doodle Chat Wallpaper */
+.whatsapp-doodle-bg {
+  background-color: #efeae2;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='360' viewBox='0 0 360 360' fill='none' stroke='%23887d6e' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' opacity='0.08'%3E%3Cpath d='M30 30 h30 a6 6 0 0 1 6 6 v16 a6 6 0 0 1 -6 6 h-18 l-8 8 v-8 h-4 a6 6 0 0 1 -6 -6 v-16 a6 6 0 0 1 6 -6 z'/%3E%3Cpath d='M140 45 c-6-10 -22-6 -22 6 c0 14 22 24 22 24 s22-10 22-24 c0-12 -16-16 -22-6 z'/%3E%3Cpath d='M250 40 h24 v16 a8 8 0 0 1 -8 8 h-8 a8 8 0 0 1 -8 -8 z'/%3E%3Cpath d='M274 44 h6 a4 4 0 0 1 4 4 v4 a4 4 0 0 1 -4 4 h-6'/%3E%3Cpath d='M60 160 l4 8 l9 1 l-7 6 l2 9 l-8 -4 l-8 4 l2 -9 l-7 -6 l9 -1 z'/%3E%3Cpath d='M190 145 v22 a5 5 0 1 1 -4 -4.8 v-17.2 h14 v22 a5 5 0 1 1 -4 -4.8 v-17.2 z'/%3E%3Cpath d='M300 150 l-28 17 l7 -11 l21 -6 z'/%3E%3Ccircle cx='115' cy='270' r='18'/%3E%3Ccircle cx='110' cy='266' r='1.5' fill='%23887d6e'/%3E%3Ccircle cx='120' cy='266' r='1.5' fill='%23887d6e'/%3E%3Cpath d='M109 276 q6 6 12 0'/%3E%3Cpath d='M225 270 a18 18 0 0 1 36 0 v10 h-7 v-8 h7'/%3E%3Cpath d='M225 272 h-7 v8 h7'/%3E%3Cpath d='M310 260 l7 -11 l7 11 l-7 11 z'/%3E%3Crect x='45' y='260' width='22' height='16' rx='3'/%3E%3Ccircle cx='56' cy='268' r='4'/%3E%3Cpath d='M52 256 h8 v4 h-8 z'/%3E%3Ccircle cx='175' cy='260' r='12'/%3E%3Cpath d='M175 253 v7 h5'/%3E%3C/svg%3E");
+}
+
+.dark .whatsapp-doodle-bg {
+  background-color: #0b141a;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='360' viewBox='0 0 360 360' fill='none' stroke='%238696a0' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' opacity='0.045'%3E%3Cpath d='M30 30 h30 a6 6 0 0 1 6 6 v16 a6 6 0 0 1 -6 6 h-18 l-8 8 v-8 h-4 a6 6 0 0 1 -6 -6 v-16 a6 6 0 0 1 6 -6 z'/%3E%3Cpath d='M140 45 c-6-10 -22-6 -22 6 c0 14 22 24 22 24 s22-10 22-24 c0-12 -16-16 -22-6 z'/%3E%3Cpath d='M250 40 h24 v16 a8 8 0 0 1 -8 8 h-8 a8 8 0 0 1 -8 -8 z'/%3E%3Cpath d='M274 44 h6 a4 4 0 0 1 4 4 v4 a4 4 0 0 1 -4 4 h-6'/%3E%3Cpath d='M60 160 l4 8 l9 1 l-7 6 l2 9 l-8 -4 l-8 4 l2 -9 l-7 -6 l9 -1 z'/%3E%3Cpath d='M190 145 v22 a5 5 0 1 1 -4 -4.8 v-17.2 h14 v22 a5 5 0 1 1 -4 -4.8 v-17.2 z'/%3E%3Cpath d='M300 150 l-28 17 l7 -11 l21 -6 z'/%3E%3Ccircle cx='115' cy='270' r='18'/%3E%3Ccircle cx='110' cy='266' r='1.5' fill='%238696a0'/%3E%3Ccircle cx='120' cy='266' r='1.5' fill='%238696a0'/%3E%3Cpath d='M109 276 q6 6 12 0'/%3E%3Cpath d='M225 270 a18 18 0 0 1 36 0 v10 h-7 v-8 h7'/%3E%3Cpath d='M225 272 h-7 v8 h7'/%3E%3Cpath d='M310 260 l7 -11 l7 11 l-7 11 z'/%3E%3Crect x='45' y='260' width='22' height='16' rx='3'/%3E%3Ccircle cx='56' cy='268' r='4'/%3E%3Cpath d='M52 256 h8 v4 h-8 z'/%3E%3Ccircle cx='175' cy='260' r='12'/%3E%3Cpath d='M175 253 v7 h5'/%3E%3C/svg%3E");
+}

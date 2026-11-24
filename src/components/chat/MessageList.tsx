@@ -65,11 +65,11 @@ export function MessageList({
   };
 
   return (
-    <div className="relative flex-1 overflow-hidden bg-slate-100/60 dark:bg-slate-950/40 transition-colors duration-200">
+    <div className="relative flex-1 overflow-hidden whatsapp-doodle-bg transition-colors duration-200">
       <div
         ref={containerRef}
         onScroll={handleScroll}
-        className="h-full overflow-y-auto px-2 py-4 space-y-2 select-text"
+        className="h-full overflow-y-auto px-2 sm:px-4 py-3 space-y-1.5 select-text"
       >
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-500">
@@ -95,8 +95,8 @@ export function MessageList({
             return (
               <React.Fragment key={message.id || index}>
                 {showDateDivider && (
-                  <div className="flex items-center justify-center my-4">
-                    <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 bg-white/90 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 px-3 py-1 rounded-full shadow-sm">
+                  <div className="flex items-center justify-center my-3">
+                    <span className="text-[11px] font-medium text-slate-600 dark:text-slate-300 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border border-slate-200/80 dark:border-slate-700/60 px-3 py-0.5 rounded-lg shadow-xs uppercase tracking-wide">
                       {formatDateDivider(message.createdAt)}
                     </span>
                   </div>
