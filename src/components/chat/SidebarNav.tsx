@@ -3,7 +3,7 @@
 import React from "react";
 import Image from "next/image";
 import { signOut, useSession } from "next-auth/react";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/components/providers/ThemeProvider";
 import {
   MessageSquare,
   Users,

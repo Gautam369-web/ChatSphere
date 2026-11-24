@@ -3,7 +3,9 @@
 import React, { useState } from "react";
 import { SessionProvider } from "next-auth/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ThemeProvider as NextThemesProvider } from "next-themes";
+import { ThemeProvider, useTheme } from "./ThemeProvider";
+
+export { useTheme };
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -21,9 +23,9 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
       <QueryClientProvider client={queryClient}>
-        <NextThemesProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+        <ThemeProvider defaultTheme="dark">
           {children}
-        </NextThemesProvider>
+        </ThemeProvider>
       </QueryClientProvider>
     </SessionProvider>
   );

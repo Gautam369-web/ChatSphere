@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/components/providers/ThemeProvider";
 import {
   User,
   AtSign,
@@ -222,7 +222,7 @@ export function SettingsView() {
                 <button
                   key={t.id}
                   type="button"
-                  onClick={() => setTheme(t.id)}
+                  onClick={() => setTheme(t.id as any)}
                   className={`p-3 rounded-2xl border flex flex-col items-center gap-2 transition ${
                     isSelected
                       ? "bg-indigo-600/20 border-indigo-500 text-indigo-300"
