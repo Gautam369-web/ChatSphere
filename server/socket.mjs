@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const port = process.env.SOCKET_PORT || 3001;
+const port = process.env.PORT || process.env.SOCKET_PORT || 3001;
 const httpServer = createServer((req, res) => {
   res.writeHead(200, { "Content-Type": "application/json" });
   res.end(
