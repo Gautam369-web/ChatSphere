@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { registerSchema } from "@/lib/validations/auth";
+import { sendOtpEmail } from "@/lib/email";
 
 export async function POST(req: Request) {
   try {
@@ -23,7 +24,8 @@ export async function POST(req: Request) {
     const existingEmail = await prisma.user.findUnique({
       where: { email: lowerEmail },
     });
-    if (existingEmail) {
+
+    if (existingEmail && existingEmail.emailVerified) {
       return NextResponse.json({ error: "Email is already registered" }, { status: 409 });
     }
 
@@ -31,49 +33,80 @@ export async function POST(req: Request) {
     const existingUsername = await prisma.user.findUnique({
       where: { username: lowerUsername },
     });
-    if (existingUsername) {
+
+    if (existingUsername && existingUsername.id !== existingEmail?.id) {
       return NextResponse.json({ error: "Username is already taken" }, { status: 409 });
     }
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Generate unique 5-digit connect code e.g. 45632
     const connectCode = Math.floor(10000 + Math.random() * 90000).toString();
 
-    // Create user with profile
-    const user = await prisma.user.create({
-      data: {
-        name,
-        username: lowerUsername,
-        email: lowerEmail,
-        connectCode,
-        password: hashedPassword,
-        image: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`,
-        profile: {
-          create: {
-            theme: "dark",
-            notificationsEnabled: true,
-            soundEnabled: true,
-            privacyLastSeen: "everyone",
-            privacyReadReceipts: true,
+    // Create or update unverified user
+    if (existingEmail && !existingEmail.emailVerified) {
+      await prisma.user.update({
+        where: { id: existingEmail.id },
+        data: {
+          name,
+          username: lowerUsername,
+          password: hashedPassword,
+          connectCode: existingEmail.connectCode || connectCode,
+        },
+      });
+    } else {
+      await prisma.user.create({
+        data: {
+          name,
+          username: lowerUsername,
+          email: lowerEmail,
+          connectCode,
+          password: hashedPassword,
+          emailVerified: null,
+          image: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`,
+          profile: {
+            create: {
+              theme: "dark",
+              notificationsEnabled: true,
+              soundEnabled: true,
+              privacyLastSeen: "everyone",
+              privacyReadReceipts: true,
+            },
           },
         },
-      },
-      select: {
-        id: true,
-        name: true,
-        username: true,
-        email: true,
-        image: true,
-        role: true,
-        createdAt: true,
+      });
+    }
+
+    // Clean any prior tokens for this email
+    await prisma.verificationToken.deleteMany({
+      where: { identifier: lowerEmail },
+    });
+
+    // Generate 6-digit OTP code
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    await prisma.verificationToken.create({
+      data: {
+        identifier: lowerEmail,
+        token: otp,
+        expires: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
       },
     });
 
+    // Send verification email
+    const emailRes = await sendOtpEmail({
+      to: lowerEmail,
+      name,
+      otp,
+    });
+
     return NextResponse.json(
-      { message: "Account created successfully", user },
-      { status: 201 }
+      {
+        message: "Verification code sent to your email",
+        email: lowerEmail,
+        requiresOtp: true,
+        simulatedOtp: emailRes.simulated ? otp : undefined,
+      },
+      { status: 200 }
     );
   } catch (error: any) {
     console.error("Registration error:", error);

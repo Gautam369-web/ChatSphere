@@ -21,14 +21,20 @@ export const authOptions: NextAuthOptions = {
           GoogleProvider({
             clientId: process.env.GOOGLE_CLIENT_ID,
             clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+            allowDangerousEmailAccountLinking: true,
             profile(profile) {
               return {
                 id: profile.sub,
                 name: profile.name,
                 email: profile.email,
                 image: profile.picture,
-                username: profile.email.split("@")[0] + "_" + Math.floor(Math.random() * 1000),
+                username:
+                  profile.email.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, "") +
+                  "_" +
+                  Math.floor(100 + Math.random() * 900),
+                connectCode: Math.floor(10000 + Math.random() * 90000).toString(),
                 role: "USER",
+                emailVerified: new Date(),
               };
             },
           }),
@@ -60,6 +66,10 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Incorrect password");
         }
 
+        if (!user.emailVerified) {
+          throw new Error("UNVERIFIED_EMAIL");
+        }
+
         return {
           id: user.id,
           name: user.name,
@@ -73,12 +83,52 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
+    async signIn({ user, account }) {
+      if (account?.provider === "google") {
+        try {
+          const lowerEmail = user.email?.toLowerCase();
+          if (lowerEmail) {
+            const dbUser = await prisma.user.findUnique({
+              where: { email: lowerEmail },
+            });
+            if (dbUser) {
+              await prisma.user.update({
+                where: { id: dbUser.id },
+                data: {
+                  emailVerified: dbUser.emailVerified || new Date(),
+                  connectCode:
+                    dbUser.connectCode ||
+                    Math.floor(10000 + Math.random() * 90000).toString(),
+                },
+              });
+            }
+          }
+        } catch (err) {
+          console.error("Google signIn callback warning:", err);
+        }
+      }
+      return true;
+    },
     async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
         token.username = (user as any).username;
         token.role = (user as any).role;
         token.connectCode = (user as any).connectCode;
+
+        if (!token.connectCode || !token.username) {
+          try {
+            const dbUser = await prisma.user.findUnique({
+              where: { id: user.id },
+            });
+            if (dbUser) {
+              token.username = dbUser.username || dbUser.email.split("@")[0];
+              token.connectCode =
+                dbUser.connectCode ||
+                Math.floor(10000 + Math.random() * 90000).toString();
+            }
+          } catch {}
+        }
       }
 
       // Handle user profile update trigger
