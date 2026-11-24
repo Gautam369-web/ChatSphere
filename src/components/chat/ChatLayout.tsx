@@ -666,9 +666,9 @@ export function ChatLayout() {
             )}
           </main>
 
-          {/* 3. Right Info Panel (Desktop Toggle) */}
+          {/* 3. Profile / Contact Info Panel (Responsive Mobile Overlay & Desktop Sidebar) */}
           {activeConversation && infoPanelOpen && (
-            <div className="hidden lg:flex h-full">
+            <div className="fixed inset-0 z-40 flex lg:static lg:inset-auto lg:z-auto lg:h-full">
               <InfoPanel
                 conversation={activeConversation}
                 messages={activeMessages}

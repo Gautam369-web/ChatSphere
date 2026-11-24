@@ -8,14 +8,11 @@ import { ConversationItem } from "@/types";
 import {
   Phone,
   Video,
-  PanelRight,
   ArrowLeft,
   Pin,
   MoreVertical,
-  ShieldAlert,
   RotateCw,
   Trash2,
-  BellOff,
   Info,
 } from "lucide-react";
 
@@ -35,9 +32,10 @@ export function ChatHeader({
 
   const {
     onlineUsers,
+    userLastSeen,
+    presenceSynced,
     typingUsers,
     toggleInfoPanel,
-    infoPanelOpen,
     setMessages,
     setConversations,
     removeConversation,
@@ -47,7 +45,16 @@ export function ChatHeader({
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [, setTimeTick] = useState(0);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Re-render every 30s so relative "last seen" stays accurate in real time
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimeTick((t) => t + 1);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent | TouchEvent) {
@@ -112,7 +119,12 @@ export function ChatHeader({
 
   const otherMember = conversation.members.find((m) => m.userId !== currentUserId);
   const otherUser = otherMember?.user;
-  const isOnline = otherUser ? onlineUsers.has(otherUser.id) || otherUser.isOnline : false;
+  const isOnline = otherUser
+    ? presenceSynced
+      ? onlineUsers.has(otherUser.id)
+      : onlineUsers.has(otherUser.id) || otherUser.isOnline
+    : false;
+  const lastSeenValue = otherUser ? userLastSeen[otherUser.id] || otherUser.lastSeen : null;
 
   const typers = typingUsers[conversation.id];
   const isTyping = typers && typers.size > 0;
@@ -138,10 +150,10 @@ export function ChatHeader({
       return <span>{conversation.members.length} members</span>;
     }
     if (isOnline) {
-      return <span className="text-emerald-400 font-medium">Online</span>;
+      return <span className="text-emerald-400 font-medium">online</span>;
     }
-    if (otherUser?.lastSeen) {
-      return <span>last seen {formatLastSeen(otherUser.lastSeen)}</span>;
+    if (lastSeenValue) {
+      return <span>last seen {formatLastSeen(lastSeenValue)}</span>;
     }
     return <span>Offline</span>;
   };
@@ -162,43 +174,49 @@ export function ChatHeader({
           </button>
         )}
 
-        {/* Avatar */}
-        <div className="relative shrink-0">
-          <div className="w-10 h-10 rounded-2xl overflow-hidden bg-slate-200 dark:bg-slate-800 ring-1 ring-black/5 dark:ring-white/10">
-            <img src={avatar} alt={title} className="w-full h-full object-cover" />
+        {/* Avatar + Name (Tap to view Profile like WhatsApp) */}
+        <button
+          type="button"
+          onClick={toggleInfoPanel}
+          title={conversation.isGroup ? "Tap for group info" : "Tap for contact info"}
+          className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 text-left cursor-pointer hover:opacity-85 active:opacity-75 transition rounded-xl py-1 pr-2"
+        >
+          <div className="relative shrink-0">
+            <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-800 ring-1 ring-black/5 dark:ring-white/10">
+              <img src={avatar} alt={title} className="w-full h-full object-cover" />
+            </div>
+            {!conversation.isGroup && (
+              <span
+                className={`absolute bottom-0 right-0 w-3 h-3 rounded-full ring-2 ring-white dark:ring-slate-950 ${
+                  isOnline ? "bg-emerald-500" : "bg-slate-400 dark:bg-slate-600"
+                }`}
+              />
+            )}
           </div>
-          {!conversation.isGroup && (
-            <span
-              className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full ring-2 ring-white dark:ring-slate-950 ${
-                isOnline ? "bg-emerald-500" : "bg-slate-400 dark:bg-slate-600"
-              }`}
-            />
-          )}
-        </div>
 
-        {/* Header Details */}
-        <div className="flex flex-col min-w-0 flex-1">
-          <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
-            <span className="truncate">{title}</span>
-            {conversation.isGroup && conversation.isPublic && (
-              <span className="text-[10px] uppercase font-semibold px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 shrink-0">
-                Public
-              </span>
-            )}
-          </h2>
-          <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2 truncate">
-            <span className="truncate">{getSubtitle()}</span>
-            {pinnedCount > 0 && (
-              <span className="flex items-center gap-1 text-[11px] text-amber-500 dark:text-amber-400 shrink-0">
-                <Pin className="w-3 h-3 fill-amber-500 dark:fill-amber-400" />
-                <span>{pinnedCount} pinned</span>
-              </span>
-            )}
+          <div className="flex flex-col min-w-0 flex-1">
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
+              <span className="truncate">{title}</span>
+              {conversation.isGroup && conversation.isPublic && (
+                <span className="text-[10px] uppercase font-semibold px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 shrink-0">
+                  Public
+                </span>
+              )}
+            </h2>
+            <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2 truncate">
+              <span className="truncate">{getSubtitle()}</span>
+              {pinnedCount > 0 && (
+                <span className="flex items-center gap-1 text-[11px] text-amber-500 dark:text-amber-400 shrink-0">
+                  <Pin className="w-3 h-3 fill-amber-500 dark:fill-amber-400" />
+                  <span>{pinnedCount} pinned</span>
+                </span>
+              )}
+            </div>
           </div>
-        </div>
+        </button>
       </div>
 
-      {/* Action Buttons: Refresh, Audio Call, Video Call, Info Panel */}
+      {/* Action Buttons: Refresh, Audio Call, Video Call, More Options */}
       <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
         {/* Refresh button */}
         <button
@@ -229,19 +247,6 @@ export function ChatHeader({
             </button>
           </>
         )}
-
-        {/* Toggle Right Info Panel */}
-        <button
-          onClick={toggleInfoPanel}
-          title="Conversation Details & Media"
-          className={`p-2.5 rounded-xl transition ${
-            infoPanelOpen
-              ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
-              : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60"
-          }`}
-        >
-          <PanelRight className="w-4 h-4" />
-        </button>
 
         {/* WhatsApp-Style 3-Dots More Options Menu */}
         <div className="relative" ref={menuRef}>

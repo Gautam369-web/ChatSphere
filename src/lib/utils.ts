@@ -31,14 +31,24 @@ export function formatDateDivider(date: Date | string): string {
 
 export function formatLastSeen(date: Date | string): string {
   const d = new Date(date);
+  if (isNaN(d.getTime())) return "recently";
+
   const now = new Date();
-  const diffInMinutes = Math.floor((now.getTime() - d.getTime()) / (1000 * 60));
+  const diffMs = now.getTime() - d.getTime();
+  const diffInMinutes = Math.floor(diffMs / (1000 * 60));
 
   if (diffInMinutes < 1) return "just now";
-  if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-  const diffInHours = Math.floor(diffInMinutes / 60);
-  if (diffInHours < 24) return `${diffInHours}h ago`;
-  const diffInDays = Math.floor(diffInHours / 24);
-  if (diffInDays < 7) return `${diffInDays}d ago`;
-  return d.toLocaleDateString();
+
+  const timeStr = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  if (d.toDateString() === now.toDateString()) {
+    return `today at ${timeStr}`;
+  }
+
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (d.toDateString() === yesterday.toDateString()) {
+    return `yesterday at ${timeStr}`;
+  }
+
+  return `${d.toLocaleDateString()} at ${timeStr}`;
 }

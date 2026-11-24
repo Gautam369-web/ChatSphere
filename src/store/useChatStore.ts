@@ -19,6 +19,8 @@ interface ChatStore {
   activeConversationId: string | null;
   messages: Record<string, MessageItem[]>; // conversationId -> messages
   onlineUsers: Set<string>;
+  userLastSeen: Record<string, string>;
+  presenceSynced: boolean;
   typingUsers: Record<string, Set<string>>; // conversationId -> Set<username>
   infoPanelOpen: boolean;
   replyingTo: MessageItem | null;
@@ -34,7 +36,8 @@ interface ChatStore {
   updateMessage: (conversationId: string, messageId: string, updates: Partial<MessageItem>) => void;
   removeMessage: (conversationId: string, messageId: string) => void;
   setOnlineUsers: (userIds: string[]) => void;
-  setUserPresence: (userId: string, isOnline: boolean) => void;
+  setUserLastSeenMap: (lastSeenMap: Record<string, string>) => void;
+  setUserPresence: (userId: string, isOnline: boolean, lastSeen?: string) => void;
   setUserTyping: (conversationId: string, username: string, isTyping: boolean) => void;
   setInfoPanelOpen: (open: boolean) => void;
   toggleInfoPanel: () => void;
@@ -51,6 +54,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   activeConversationId: null,
   messages: {},
   onlineUsers: new Set(),
+  userLastSeen: {},
+  presenceSynced: false,
   typingUsers: {},
   infoPanelOpen: false,
   replyingTo: null,
@@ -163,9 +168,32 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       };
     }),
 
-  setOnlineUsers: (userIds) => set({ onlineUsers: new Set(userIds) }),
+  setOnlineUsers: (userIds) =>
+    set((state) => {
+      const onlineSet = new Set(userIds);
+      const updatedConvs = state.conversations.map((conv) => ({
+        ...conv,
+        members: conv.members.map((m) => ({
+          ...m,
+          user: {
+            ...m.user,
+            isOnline: onlineSet.has(m.userId),
+          },
+        })),
+      }));
+      return {
+        onlineUsers: onlineSet,
+        presenceSynced: true,
+        conversations: updatedConvs,
+      };
+    }),
 
-  setUserPresence: (userId, isOnline) =>
+  setUserLastSeenMap: (lastSeenMap) =>
+    set((state) => ({
+      userLastSeen: { ...state.userLastSeen, ...lastSeenMap },
+    })),
+
+  setUserPresence: (userId, isOnline, lastSeen) =>
     set((state) => {
       const nextOnline = new Set(state.onlineUsers);
       if (isOnline) {
@@ -173,7 +201,34 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       } else {
         nextOnline.delete(userId);
       }
-      return { onlineUsers: nextOnline };
+
+      const nextLastSeen = { ...state.userLastSeen };
+      const effectiveLastSeen = lastSeen || (!isOnline ? new Date().toISOString() : undefined);
+      if (effectiveLastSeen) {
+        nextLastSeen[userId] = effectiveLastSeen;
+      }
+
+      const updatedConvs = state.conversations.map((conv) => ({
+        ...conv,
+        members: conv.members.map((m) =>
+          m.userId === userId
+            ? {
+                ...m,
+                user: {
+                  ...m.user,
+                  isOnline,
+                  lastSeen: effectiveLastSeen || m.user.lastSeen,
+                },
+              }
+            : m
+        ),
+      }));
+
+      return {
+        onlineUsers: nextOnline,
+        userLastSeen: nextLastSeen,
+        conversations: updatedConvs,
+      };
     }),
 
   setUserTyping: (conversationId, username, isTyping) =>

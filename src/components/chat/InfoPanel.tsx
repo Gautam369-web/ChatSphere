@@ -4,20 +4,21 @@ import React, { useState } from "react";
 import { useSession } from "next-auth/react";
 import { ConversationItem, MessageItem } from "@/types";
 import { useChatStore } from "@/store/useChatStore";
+import { formatLastSeen } from "@/lib/utils";
 import {
   X,
-  Users,
-  Image as ImageIcon,
-  FileText,
+  ArrowLeft,
   Pin,
   BellOff,
   Bell,
-  UserPlus,
   ShieldAlert,
   LogOut,
   Trash2,
   Crown,
   Shield,
+  Mail,
+  Hash,
+  AtSign,
 } from "lucide-react";
 
 interface InfoPanelProps {
@@ -37,7 +38,14 @@ export function InfoPanel({
 }: InfoPanelProps) {
   const { data: session } = useSession();
   const currentUserId = session?.user?.id;
-  const { onlineUsers, removeConversation, setActiveConversationId, setInfoPanelOpen } = useChatStore();
+  const {
+    onlineUsers,
+    userLastSeen,
+    presenceSynced,
+    removeConversation,
+    setActiveConversationId,
+    setInfoPanelOpen,
+  } = useChatStore();
 
   const [activeTab, setActiveTab] = useState<"members" | "media" | "pinned">("members");
   const [isMuted, setIsMuted] = useState(false);
@@ -68,7 +76,12 @@ export function InfoPanel({
 
   const otherMember = conversation.members.find((m) => m.userId !== currentUserId);
   const otherUser = otherMember?.user;
-  const isOnline = otherUser ? onlineUsers.has(otherUser.id) || otherUser.isOnline : false;
+  const isOnline = otherUser
+    ? presenceSynced
+      ? onlineUsers.has(otherUser.id)
+      : onlineUsers.has(otherUser.id) || otherUser.isOnline
+    : false;
+  const lastSeenValue = otherUser ? userLastSeen[otherUser.id] || otherUser.lastSeen : null;
 
   const title = conversation.isGroup
     ? conversation.name || "Group Chat"
@@ -80,17 +93,28 @@ export function InfoPanel({
 
   // Filter media items
   const mediaMessages = messages.filter((m) => m.type === "IMAGE" || m.type === "VIDEO");
-  const docMessages = messages.filter((m) => m.type === "FILE");
   const pinnedMessages = conversation.pinnedMessages || [];
 
   return (
-    <aside className="w-80 lg:w-88 h-full bg-white/95 dark:bg-slate-900/90 border-l border-slate-200 dark:border-slate-800/60 flex flex-col z-20 shrink-0 transition-colors duration-200">
+    <aside className="w-full lg:w-88 h-full bg-white dark:bg-[#111b21] border-l border-slate-200 dark:border-slate-800/60 flex flex-col z-20 shrink-0 transition-colors duration-200">
       {/* Header */}
-      <div className="h-16 px-4 border-b border-slate-200 dark:border-slate-800/60 flex items-center justify-between">
-        <h3 className="font-bold text-sm text-slate-900 dark:text-white">Details</h3>
+      <div className="h-16 px-4 border-b border-slate-200 dark:border-slate-800/60 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onClose}
+            className="lg:hidden p-1.5 -ml-1 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+            title="Back to chat"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+            {conversation.isGroup ? "Group info" : "Contact info"}
+          </h3>
+        </div>
         <button
           onClick={onClose}
-          className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+          className="hidden lg:flex p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+          title="Close"
         >
           <X className="w-4 h-4" />
         </button>
@@ -98,24 +122,64 @@ export function InfoPanel({
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
         {/* Profile Card */}
-        <div className="flex flex-col items-center text-center">
-          <div className="w-20 h-20 rounded-3xl overflow-hidden bg-slate-100 dark:bg-slate-800 ring-2 ring-indigo-500/30 mb-3 shadow-lg">
+        <div className="flex flex-col items-center text-center pt-2">
+          <div className="relative w-24 h-24 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 ring-2 ring-emerald-500/30 mb-3 shadow-lg">
             <img src={avatar} alt={title} className="w-full h-full object-cover" />
           </div>
-          <h4 className="font-bold text-base text-slate-900 dark:text-white">{title}</h4>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            {conversation.isGroup
-              ? `${conversation.members.length} members`
-              : isOnline
-              ? "Active now"
-              : "Offline"}
+          <h4 className="font-bold text-lg text-slate-900 dark:text-white">{title}</h4>
+          {!conversation.isGroup && otherUser?.username && (
+            <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-0.5">
+              <AtSign className="w-3 h-3" />
+              <span>{otherUser.username}</span>
+            </p>
+          )}
+          <p className="text-xs mt-1 font-medium">
+            {conversation.isGroup ? (
+              <span className="text-slate-500 dark:text-slate-400">
+                {conversation.members.length} members
+              </span>
+            ) : isOnline ? (
+              <span className="text-emerald-500">online</span>
+            ) : lastSeenValue ? (
+              <span className="text-slate-500 dark:text-slate-400">
+                last seen {formatLastSeen(lastSeenValue)}
+              </span>
+            ) : (
+              <span className="text-slate-500 dark:text-slate-400">Offline</span>
+            )}
           </p>
           {conversation.description && (
-            <p className="text-xs text-slate-600 dark:text-slate-300 mt-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700/50">
+            <p className="text-xs text-slate-600 dark:text-slate-300 mt-2.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700/50">
               {conversation.description}
             </p>
           )}
         </div>
+
+        {/* WhatsApp-Style About / Bio & Contact Details for 1-to-1 */}
+        {!conversation.isGroup && otherUser && (
+          <div className="rounded-2xl bg-slate-50 dark:bg-[#1f2c34] border border-slate-200/80 dark:border-slate-800 p-3.5 space-y-3 text-xs">
+            <div>
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                About
+              </span>
+              <p className="text-slate-800 dark:text-slate-100 mt-0.5 leading-relaxed">
+                {otherUser.bio || otherUser.statusMessage || "Hey there! I am using ChatSphere."}
+              </p>
+            </div>
+            {otherUser.email && (
+              <div className="pt-2 border-t border-slate-200/70 dark:border-slate-700/60 flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <span className="truncate">{otherUser.email}</span>
+              </div>
+            )}
+            {otherUser.connectCode && (
+              <div className="pt-2 border-t border-slate-200/70 dark:border-slate-700/60 flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                <Hash className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <span>Connect ID: {otherUser.connectCode}</span>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Quick Actions */}
         <div className="grid grid-cols-2 gap-2">

@@ -30,6 +30,8 @@ const io = new Server(httpServer, {
 const userSockets = new Map();
 // Map of socketId -> userId
 const socketToUser = new Map();
+// Map of userId -> ISO lastSeen timestamp
+const userLastSeen = new Map();
 
 io.use((socket, next) => {
   const userId = socket.handshake.auth?.userId || socket.handshake.query?.userId;
@@ -67,8 +69,9 @@ io.on("connection", (socket) => {
     lastSeen: new Date().toISOString(),
   });
 
-  // Return currently online users to the freshly connected socket
+  // Return currently online users & recent lastSeen timestamps to freshly connected socket
   socket.emit("online_users_list", Array.from(userSockets.keys()));
+  socket.emit("user_last_seen_map", Object.fromEntries(userLastSeen));
 
   // 1. Join Conversation Room
   socket.on("join_conversation", (conversationId) => {
@@ -251,10 +254,12 @@ io.on("connection", (socket) => {
       sockets.delete(socket.id);
       if (sockets.size === 0) {
         userSockets.delete(userId);
+        const nowIso = new Date().toISOString();
+        userLastSeen.set(userId, nowIso);
         io.emit("presence_update", {
           userId,
           isOnline: false,
-          lastSeen: new Date().toISOString(),
+          lastSeen: nowIso,
         });
       }
     }

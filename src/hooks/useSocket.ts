@@ -23,6 +23,7 @@ export function useSocket() {
     updateMessage,
     removeMessage,
     setOnlineUsers,
+    setUserLastSeenMap,
     setUserPresence,
     setUserTyping,
     setActiveCall,
@@ -71,9 +72,16 @@ export function useSocket() {
       setOnlineUsers(users);
     });
 
-    socket.on("presence_update", ({ userId, isOnline }: { userId: string; isOnline: boolean }) => {
-      setUserPresence(userId, isOnline);
+    socket.on("user_last_seen_map", (lastSeenMap: Record<string, string>) => {
+      setUserLastSeenMap(lastSeenMap || {});
     });
+
+    socket.on(
+      "presence_update",
+      ({ userId, isOnline, lastSeen }: { userId: string; isOnline: boolean; lastSeen?: string }) => {
+        setUserPresence(userId, isOnline, lastSeen);
+      }
+    );
 
     socket.on("user_typing", ({ conversationId, username, isTyping }: { conversationId: string; username: string; isTyping: boolean }) => {
       setUserTyping(conversationId, username, isTyping);
@@ -259,6 +267,7 @@ export function useSocket() {
     updateMessage,
     removeMessage,
     setOnlineUsers,
+    setUserLastSeenMap,
     setUserPresence,
     setUserTyping,
     setActiveCall,
