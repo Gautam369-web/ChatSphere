@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useChatStore } from "@/store/useChatStore";
-import { useSocket } from "@/hooks/useSocket";
+import { useSocket, getSocket } from "@/hooks/useSocket";
 import { callSounds } from "@/lib/callSounds";
 import {
   Phone,
@@ -35,7 +35,7 @@ const ICE_SERVERS: RTCConfiguration = {
 export function CallModal() {
   const { data: session } = useSession();
   const { activeCall, setActiveCall } = useChatStore();
-  const { socket, acceptCall, rejectCall, endCall, sendCallSignal } = useSocket();
+  const { socket: hookSocket, acceptCall, rejectCall, endCall, sendCallSignal } = useSocket();
 
   const [callDuration, setCallDuration] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
@@ -47,6 +47,10 @@ export function CallModal() {
   const [hasRemoteVideo, setHasRemoteVideo] = useState(false);
   const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
 
+  // Streams in state to guarantee DOM re-render and video srcObject binding
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -55,7 +59,7 @@ export function CallModal() {
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const queuedCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
-  const hasInitializedCallRef = useRef(false);
+  const hasStartedMediaRef = useRef(false);
 
   const isIncoming = activeCall?.status === "incoming";
   const isConnected = activeCall?.status === "connected";
@@ -69,6 +73,10 @@ export function CallModal() {
       localStreamRef.current.getTracks().forEach((track) => track.stop());
       localStreamRef.current = null;
     }
+    setLocalStream(null);
+    setRemoteStream(null);
+    setHasRemoteVideo(false);
+
     if (pcRef.current) {
       pcRef.current.onicecandidate = null;
       pcRef.current.ontrack = null;
@@ -77,7 +85,7 @@ export function CallModal() {
       pcRef.current = null;
     }
     queuedCandidatesRef.current = [];
-    hasInitializedCallRef.current = false;
+    hasStartedMediaRef.current = false;
   }, []);
 
   // Duration timer
@@ -113,6 +121,26 @@ export function CallModal() {
     };
   }, [activeCall?.status, cleanupMediaAndPeer]);
 
+  // Attach local stream to video element whenever it changes
+  useEffect(() => {
+    if (localVideoRef.current && localStream) {
+      localVideoRef.current.srcObject = localStream;
+      localVideoRef.current.play().catch(() => {});
+    }
+  }, [localStream]);
+
+  // Attach remote stream to remote video and audio elements
+  useEffect(() => {
+    if (remoteVideoRef.current && remoteStream) {
+      remoteVideoRef.current.srcObject = remoteStream;
+      remoteVideoRef.current.play().catch(() => {});
+    }
+    if (remoteAudioRef.current && remoteStream) {
+      remoteAudioRef.current.srcObject = remoteStream;
+      remoteAudioRef.current.play().catch(() => {});
+    }
+  }, [remoteStream]);
+
   // Flush queued ICE candidates once remote description is set
   const flushQueuedCandidates = useCallback(async (pc: RTCPeerConnection) => {
     while (queuedCandidatesRef.current.length > 0) {
@@ -127,159 +155,59 @@ export function CallModal() {
     }
   }, []);
 
-  // Initialize WebRTC for Outgoing Caller
-  useEffect(() => {
-    const currentCall = activeCall;
-    if (!currentCall || currentCall.status !== "outgoing" || hasInitializedCallRef.current) return;
-    if (!socket || !session?.user?.id) return;
-
-    hasInitializedCallRef.current = true;
-    let isCancelled = false;
-
-    async function startOutgoingCall() {
-      const callData = activeCall;
-      if (!callData) return;
-
-      try {
-        setErrorMessage(null);
-
-        // 1. Get user media
-        let stream: MediaStream;
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({
-            audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-            video: isVideoCall ? { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" } : false,
-          });
-        } catch (err: any) {
-          console.warn("Failed with requested media constraints, attempting audio only:", err);
-          stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-          if (isVideoCall) {
-            setErrorMessage("Camera unavailable. Continuing with audio only.");
-          }
-        }
-
-        if (isCancelled) {
-          stream.getTracks().forEach((t) => t.stop());
-          return;
-        }
-
-        localStreamRef.current = stream;
-        if (localVideoRef.current && isVideoCall) {
-          localVideoRef.current.srcObject = stream;
-        }
-
-        // 2. Setup RTCPeerConnection
-        const pc = new RTCPeerConnection(ICE_SERVERS);
-        pcRef.current = pc;
-
-        stream.getTracks().forEach((track) => {
-          pc.addTrack(track, stream);
-        });
-
-        // Track listener
-        pc.ontrack = (event) => {
-          const remoteStream = event.streams[0];
-          if (remoteVideoRef.current) {
-            remoteVideoRef.current.srcObject = remoteStream;
-          }
-          if (remoteAudioRef.current) {
-            remoteAudioRef.current.srcObject = remoteStream;
-          }
-          if (event.track.kind === "video") {
-            setHasRemoteVideo(true);
-            event.track.onended = () => setHasRemoteVideo(false);
-            event.track.onmute = () => setHasRemoteVideo(false);
-            event.track.onunmute = () => setHasRemoteVideo(true);
-          }
-        };
-
-        // ICE candidate handler
-        pc.onicecandidate = (event) => {
-          if (event.candidate) {
-            sendCallSignal(callData.caller.id, {
-              type: "candidate",
-              candidate: event.candidate.toJSON(),
-            });
-          }
-        };
-
-        // 3. Create offer and initiate call via socket
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-
-        socket?.emit("call_initiate", {
-          recipientId: callData.caller.id,
-          callType: callData.callType,
-          conversationId: callData.conversationId,
-          caller: {
-            id: session?.user?.id,
-            name: session?.user?.name,
-            username: session?.user?.username,
-            image: session?.user?.image,
-          },
-          offer,
-        });
-      } catch (err: any) {
-        console.error("Failed to start outgoing call:", err);
-        setErrorMessage(err.message || "Could not access microphone or camera");
-        callSounds.playEndTone();
-        setTimeout(() => {
-          setActiveCall(null);
-        }, 2500);
-      }
-    }
-
-    startOutgoingCall();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [activeCall, isVideoCall, session?.user, socket, sendCallSignal, setActiveCall]);
-
-  // Recipient Accepts Incoming Call
-  const handleAcceptIncomingCall = async () => {
-    if (!activeCall || !socket || !session?.user?.id) return;
-    callSounds.stop();
-
+  // Initialize local media stream
+  const acquireLocalMedia = useCallback(async (wantVideo: boolean) => {
     try {
       setErrorMessage(null);
-
-      // 1. Get user media
       let stream: MediaStream;
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-          video: isVideoCall ? { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" } : false,
+          video: wantVideo ? { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" } : false,
         });
-      } catch (err: any) {
-        console.warn("Could not get requested media, attempting audio fallback:", err);
+      } catch (err) {
+        console.warn("Could not get requested video, falling back to audio only:", err);
         stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-        if (isVideoCall) {
-          setErrorMessage("Camera unavailable. Connected with audio only.");
+        if (wantVideo) {
+          setErrorMessage("Camera unavailable. Using microphone only.");
         }
       }
 
       localStreamRef.current = stream;
-      if (localVideoRef.current && isVideoCall) {
-        localVideoRef.current.srcObject = stream;
-      }
+      setLocalStream(stream);
+      return stream;
+    } catch (err: any) {
+      console.error("Failed to access media devices:", err);
+      setErrorMessage(err.message || "Microphone / Camera access denied.");
+      return null;
+    }
+  }, []);
 
-      // 2. Setup RTCPeerConnection
+  // For Outgoing caller: Acquire camera preview immediately on mount
+  useEffect(() => {
+    if (!activeCall || activeCall.status !== "outgoing" || hasStartedMediaRef.current) return;
+    hasStartedMediaRef.current = true;
+
+    acquireLocalMedia(isVideoCall);
+  }, [activeCall, isVideoCall, acquireLocalMedia]);
+
+  // Helper to create or get peer connection
+  const getOrCreatePeerConnection = useCallback(
+    (targetUserId: string, localMedia: MediaStream) => {
+      if (pcRef.current) return pcRef.current;
+
       const pc = new RTCPeerConnection(ICE_SERVERS);
       pcRef.current = pc;
 
-      stream.getTracks().forEach((track) => {
-        pc.addTrack(track, stream);
+      // Add local media tracks
+      localMedia.getTracks().forEach((track) => {
+        pc.addTrack(track, localMedia);
       });
 
+      // Handle remote incoming tracks
       pc.ontrack = (event) => {
-        const remoteStream = event.streams[0];
-        if (remoteVideoRef.current) {
-          remoteVideoRef.current.srcObject = remoteStream;
-        }
-        if (remoteAudioRef.current) {
-          remoteAudioRef.current.srcObject = remoteStream;
-        }
+        const stream = event.streams[0];
+        setRemoteStream(stream);
         if (event.track.kind === "video") {
           setHasRemoteVideo(true);
           event.track.onended = () => setHasRemoteVideo(false);
@@ -288,26 +216,32 @@ export function CallModal() {
         }
       };
 
+      // ICE candidates
       pc.onicecandidate = (event) => {
         if (event.candidate) {
-          sendCallSignal(activeCall.caller.id, {
+          sendCallSignal(targetUserId, {
             type: "candidate",
             candidate: event.candidate.toJSON(),
           });
         }
       };
 
-      // 3. Set remote description from caller's offer
-      if (activeCall.offer) {
-        await pc.setRemoteDescription(new RTCSessionDescription(activeCall.offer));
-        await flushQueuedCandidates(pc);
-      }
+      return pc;
+    },
+    [sendCallSignal]
+  );
 
-      // 4. Create answer and send back
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
+  // Recipient Accepts Incoming Call
+  const handleAcceptIncomingCall = async () => {
+    if (!activeCall) return;
+    callSounds.stop();
 
-      acceptCall(activeCall.caller.id, answer);
+    try {
+      const stream = await acquireLocalMedia(isVideoCall);
+      if (!stream) return;
+
+      // Send call accept signal to caller
+      acceptCall(activeCall.caller.id);
       setActiveCall({ ...activeCall, status: "connected" });
     } catch (err: any) {
       console.error("Error accepting call:", err);
@@ -321,49 +255,84 @@ export function CallModal() {
 
   // Listen to WebRTC signaling events from custom window events
   useEffect(() => {
-    const handleCallAccepted = async (e: Event) => {
-      const customEvent = e as CustomEvent;
-      const { answer } = customEvent.detail || {};
-      const pc = pcRef.current;
-      if (pc && answer) {
-        try {
-          if (pc.signalingState !== "stable") {
-            await pc.setRemoteDescription(new RTCSessionDescription(answer));
-            await flushQueuedCandidates(pc);
-          }
-        } catch (err) {
-          console.error("Error setting remote description on call_accepted:", err);
+    // 1. Caller receives "call_accepted" from Recipient
+    const handleCallAccepted = async () => {
+      callSounds.stop();
+      const currentCall = activeCall;
+      if (!currentCall) return;
+
+      try {
+        let stream = localStreamRef.current;
+        if (!stream) {
+          stream = await acquireLocalMedia(isVideoCall);
         }
+        if (!stream) return;
+
+        const pc = getOrCreatePeerConnection(currentCall.caller.id, stream);
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+
+        sendCallSignal(currentCall.caller.id, {
+          type: "offer",
+          offer,
+        });
+
+        setActiveCall({ ...currentCall, status: "connected" });
+      } catch (err) {
+        console.error("Error creating WebRTC offer on call_accepted:", err);
       }
     };
 
+    // 2. Both peers handle incoming WebRTC signals (offer, answer, candidate)
     const handleCallSignal = async (e: Event) => {
       const customEvent = e as CustomEvent;
-      const { signal } = customEvent.detail || {};
-      const pc = pcRef.current;
-      if (!pc || !signal) return;
+      const { signal, from } = customEvent.detail || {};
+      const currentCall = activeCall;
+      if (!signal || !currentCall) return;
 
       try {
-        if (signal.type === "candidate" && signal.candidate) {
-          if (pc.remoteDescription && pc.remoteDescription.type) {
+        // If received OFFER (Recipient handles this)
+        if (signal.type === "offer" && signal.offer) {
+          let stream = localStreamRef.current;
+          if (!stream) {
+            stream = await acquireLocalMedia(isVideoCall);
+          }
+          if (!stream) return;
+
+          const pc = getOrCreatePeerConnection(from || currentCall.caller.id, stream);
+          await pc.setRemoteDescription(new RTCSessionDescription(signal.offer));
+          await flushQueuedCandidates(pc);
+
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+
+          sendCallSignal(from || currentCall.caller.id, {
+            type: "answer",
+            answer,
+          });
+
+          setActiveCall({ ...currentCall, status: "connected" });
+        }
+        // If received ANSWER (Caller handles this)
+        else if (signal.type === "answer" && signal.answer) {
+          const pc = pcRef.current;
+          if (pc && pc.signalingState !== "stable") {
+            await pc.setRemoteDescription(new RTCSessionDescription(signal.answer));
+            await flushQueuedCandidates(pc);
+            setActiveCall({ ...currentCall, status: "connected" });
+          }
+        }
+        // If received ICE CANDIDATE
+        else if (signal.type === "candidate" && signal.candidate) {
+          const pc = pcRef.current;
+          if (pc && pc.remoteDescription && pc.remoteDescription.type) {
             await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
           } else {
             queuedCandidatesRef.current.push(signal.candidate);
           }
-        } else if (signal.type === "offer") {
-          await pc.setRemoteDescription(new RTCSessionDescription(signal));
-          await flushQueuedCandidates(pc);
-          const answer = await pc.createAnswer();
-          await pc.setLocalDescription(answer);
-          if (activeCall) {
-            sendCallSignal(activeCall.caller.id, answer);
-          }
-        } else if (signal.type === "answer") {
-          await pc.setRemoteDescription(new RTCSessionDescription(signal));
-          await flushQueuedCandidates(pc);
         }
       } catch (err) {
-        console.warn("Signal handling warning:", err);
+        console.warn("Signal handling error:", err);
       }
     };
 
@@ -393,7 +362,16 @@ export function CallModal() {
       window.removeEventListener("chatsphere:call_ended", handleCallEnded);
       window.removeEventListener("chatsphere:call_rejected", handleCallRejected);
     };
-  }, [activeCall, flushQueuedCandidates, sendCallSignal, cleanupMediaAndPeer, setActiveCall]);
+  }, [
+    activeCall,
+    isVideoCall,
+    acquireLocalMedia,
+    getOrCreatePeerConnection,
+    flushQueuedCandidates,
+    sendCallSignal,
+    cleanupMediaAndPeer,
+    setActiveCall,
+  ]);
 
   // Toggle Microphone
   const toggleMicrophone = () => {
@@ -424,17 +402,14 @@ export function CallModal() {
         });
         const newTrack = videoStream.getVideoTracks()[0];
         localStreamRef.current.addTrack(newTrack);
-
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = localStreamRef.current;
-        }
+        setLocalStream(new MediaStream(localStreamRef.current.getTracks()));
 
         if (pcRef.current) {
           pcRef.current.addTrack(newTrack, localStreamRef.current);
           const offer = await pcRef.current.createOffer();
           await pcRef.current.setLocalDescription(offer);
           if (activeCall) {
-            sendCallSignal(activeCall.caller.id, offer);
+            sendCallSignal(activeCall.caller.id, { type: "offer", offer });
           }
         }
         setIsVideoOff(false);
@@ -459,15 +434,11 @@ export function CallModal() {
         await sender.replaceTrack(newTrack);
       }
 
-      // Update local stream
       const oldTracks = localStreamRef.current.getVideoTracks();
       oldTracks.forEach((t) => t.stop());
       localStreamRef.current.removeTrack(oldTracks[0]);
       localStreamRef.current.addTrack(newTrack);
-
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = localStreamRef.current;
-      }
+      setLocalStream(new MediaStream(localStreamRef.current.getTracks()));
       setFacingMode(nextMode);
     } catch (err) {
       console.warn("Could not flip camera:", err);
@@ -479,7 +450,6 @@ export function CallModal() {
     if (!pcRef.current || !localStreamRef.current) return;
 
     if (isScreenSharing) {
-      // Switch back to camera
       try {
         const cameraStream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: "user" },
@@ -492,13 +462,10 @@ export function CallModal() {
         localStreamRef.current.getVideoTracks().forEach((t) => t.stop());
         localStreamRef.current.removeTrack(localStreamRef.current.getVideoTracks()[0]);
         localStreamRef.current.addTrack(camTrack);
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = localStreamRef.current;
-        }
+        setLocalStream(new MediaStream(localStreamRef.current.getTracks()));
         setIsScreenSharing(false);
       } catch (e) {}
     } else {
-      // Share screen
       try {
         const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
         const screenTrack = screenStream.getVideoTracks()[0];
@@ -511,9 +478,7 @@ export function CallModal() {
           toggleScreenShare();
         };
 
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = screenStream;
-        }
+        setLocalStream(screenStream);
         setIsScreenSharing(true);
       } catch (e) {
         console.warn("Screen share cancelled:", e);
@@ -659,7 +624,7 @@ export function CallModal() {
 
             {/* Local Camera Floating PiP (Bottom-Right) */}
             <div
-              className={`absolute bottom-24 right-4 sm:bottom-28 sm:right-6 w-28 h-38 sm:w-36 sm:h-48 rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl bg-slate-900 z-20 transition-all ${
+              className={`absolute bottom-24 right-4 sm:bottom-28 sm:right-6 w-32 h-44 sm:w-40 sm:h-56 rounded-2xl overflow-hidden border-2 border-white/30 shadow-2xl bg-black z-30 transition-all ${
                 isVideoOff ? "hidden" : "block"
               }`}
             >

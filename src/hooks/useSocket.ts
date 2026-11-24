@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { io, Socket } from "socket.io-client";
 import { useChatStore } from "@/store/useChatStore";
@@ -9,9 +9,14 @@ import { sounds } from "@/lib/sound";
 
 let socketInstance: Socket | null = null;
 
+export function getSocket(): Socket | null {
+  return socketInstance;
+}
+
 export function useSocket() {
   const { data: session } = useSession();
-  const socketRef = useRef<Socket | null>(null);
+  const [socket, setSocket] = useState<Socket | null>(socketInstance);
+  const socketRef = useRef<Socket | null>(socketInstance);
 
   const {
     addMessage,
@@ -26,11 +31,18 @@ export function useSocket() {
   useEffect(() => {
     if (!session?.user?.id) return;
 
+    const isNonLocal =
+      typeof window !== "undefined" &&
+      window.location.hostname !== "localhost" &&
+      window.location.hostname !== "127.0.0.1";
+
     const socketUrl =
-      process.env.NEXT_PUBLIC_SOCKET_URL ||
-      (typeof window !== "undefined"
-        ? `${window.location.protocol}//${window.location.hostname}:3001`
-        : "http://localhost:3001");
+      process.env.NEXT_PUBLIC_SOCKET_URL &&
+      process.env.NEXT_PUBLIC_SOCKET_URL !== "http://localhost:3001"
+        ? process.env.NEXT_PUBLIC_SOCKET_URL
+        : isNonLocal
+        ? "https://chatsphere-socket-fbcz.onrender.com"
+        : process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3001";
 
     if (!socketInstance) {
       socketInstance = io(socketUrl, {
@@ -45,10 +57,14 @@ export function useSocket() {
     }
 
     const socket = socketInstance;
+    if (!socket) return;
+
     socketRef.current = socket;
+    setSocket(socket);
 
     socket.on("connect", () => {
       console.log("[Client Socket] Connected to server, ID:", socket.id);
+      setSocket(socket);
     });
 
     socket.on("online_users_list", (users: string[]) => {
@@ -286,10 +302,25 @@ export function useSocket() {
       conversationId: string,
       recipientUser?: { name?: string | null; username?: string; image?: string | null }
     ) => {
+      const activeSock = socketInstance || socketRef.current;
+      if (!session?.user?.id) return;
+
+      activeSock?.emit("call_initiate", {
+        recipientId,
+        callType,
+        conversationId,
+        caller: {
+          id: session.user.id,
+          name: session.user.name || session.user.username || "User",
+          username: session.user.username || "",
+          image: session.user.image || null,
+        },
+      });
+
       setActiveCall({
         caller: {
           id: recipientId,
-          name: recipientUser?.name || recipientUser?.username || "Calling...",
+          name: recipientUser?.name || recipientUser?.username || "Contact",
           username: recipientUser?.username || "",
           image: recipientUser?.image || null,
         },
@@ -298,7 +329,7 @@ export function useSocket() {
         status: "outgoing",
       });
     },
-    [setActiveCall]
+    [session?.user, setActiveCall]
   );
 
   const sendCallSignal = useCallback((to: string, signal: any) => {
@@ -325,7 +356,7 @@ export function useSocket() {
 
   return useMemo(
     () => ({
-      socket: socketRef.current,
+      socket: socket || socketInstance || socketRef.current,
       joinConversation,
       leaveConversation,
       startTyping,
