@@ -11,12 +11,14 @@ import {
   Check,
   Globe,
   Lock,
+  KeyRound,
 } from "lucide-react";
 
 interface NewChatModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreateDirectChat: (recipientId: string) => void;
+  onConnectByCode?: (conversation: any) => void;
   onCreateGroupChat: (payload: {
     name: string;
     description?: string;
@@ -29,9 +31,13 @@ export function NewChatModal({
   isOpen,
   onClose,
   onCreateDirectChat,
+  onConnectByCode,
   onCreateGroupChat,
 }: NewChatModalProps) {
-  const [tab, setTab] = useState<"direct" | "group">("direct");
+  const [tab, setTab] = useState<"direct" | "group" | "code">("direct");
+  const [codeVal, setCodeVal] = useState("");
+  const [codeFeedback, setCodeFeedback] = useState<string | null>(null);
+  const [isSubmittingCode, setIsSubmittingCode] = useState(false);
   const [search, setSearch] = useState("");
   const [users, setUsers] = useState<UserSummary[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -89,12 +95,51 @@ export function NewChatModal({
     onClose();
   };
 
+  const handleConnectCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!codeVal.trim()) return;
+
+    try {
+      setIsSubmittingCode(true);
+      setCodeFeedback(null);
+      const res = await fetch("/api/conversations/connect-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: codeVal.trim() }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setCodeFeedback(data.error || "Failed to connect with ID");
+      } else {
+        if (onConnectByCode) {
+          onConnectByCode(data.conversation);
+        }
+        onClose();
+      }
+    } catch {
+      setCodeFeedback("Failed to connect via code");
+    } finally {
+      setIsSubmittingCode(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
       <div className="w-full max-w-md rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
         {/* Modal Header */}
         <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setTab("code")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+                tab === "code"
+                  ? "bg-indigo-600 text-white shadow"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              Direct ID
+            </button>
             <button
               onClick={() => setTab("direct")}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
@@ -103,7 +148,7 @@ export function NewChatModal({
                   : "text-slate-400 hover:text-white"
               }`}
             >
-              Direct Message
+              People
             </button>
             <button
               onClick={() => setTab("group")}
@@ -124,6 +169,45 @@ export function NewChatModal({
             <X className="w-4 h-4" />
           </button>
         </div>
+
+        {/* Tab 0: Direct ID Code Connect */}
+        {tab === "code" && (
+          <form onSubmit={handleConnectCode} className="p-6 flex flex-col items-center text-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-600/20 text-indigo-400 flex items-center justify-center">
+              <KeyRound className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-white">Connect via Direct ID</h3>
+              <p className="text-xs text-slate-400 mt-1 max-w-xs">
+                Enter your partner&apos;s 5-digit Direct ID or any shared code (e.g. <span className="font-mono text-indigo-300">45632</span>). Both users entering this code connect exclusively!
+              </p>
+            </div>
+
+            {codeFeedback && (
+              <p className="text-xs text-rose-400 bg-rose-500/10 px-3 py-1.5 rounded-xl border border-rose-500/20 w-full">
+                {codeFeedback}
+              </p>
+            )}
+
+            <input
+              type="text"
+              value={codeVal}
+              onChange={(e) => setCodeVal(e.target.value)}
+              placeholder="e.g. 45632"
+              required
+              autoFocus
+              className="w-full text-center tracking-widest font-mono text-xl py-3 px-4 rounded-2xl bg-slate-950 border border-slate-700 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+
+            <button
+              type="submit"
+              disabled={isSubmittingCode || !codeVal.trim()}
+              className="w-full py-3 rounded-xl font-semibold text-xs text-white bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-600/30 transition disabled:opacity-50"
+            >
+              {isSubmittingCode ? "Connecting..." : "Pair & Open Chat"}
+            </button>
+          </form>
+        )}
 
         {/* Tab 1: Direct Message */}
         {tab === "direct" && (

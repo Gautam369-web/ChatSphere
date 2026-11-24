@@ -65,6 +65,7 @@ export const authOptions: NextAuthOptions = {
           name: user.name,
           email: user.email,
           username: user.username || user.email.split("@")[0],
+          connectCode: user.connectCode || Math.floor(10000 + Math.random() * 90000).toString(),
           image: user.image,
           role: user.role,
         };
@@ -77,6 +78,7 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
         token.username = (user as any).username;
         token.role = (user as any).role;
+        token.connectCode = (user as any).connectCode;
       }
 
       // Handle user profile update trigger
@@ -84,6 +86,7 @@ export const authOptions: NextAuthOptions = {
         if (session.name) token.name = session.name;
         if (session.image) token.picture = session.image;
         if (session.username) token.username = session.username;
+        if (session.connectCode) token.connectCode = session.connectCode;
       }
 
       return token;
@@ -93,6 +96,7 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.id as string;
         session.user.username = token.username as string;
         session.user.role = token.role as string;
+        session.user.connectCode = token.connectCode as string;
       }
       return session;
     },

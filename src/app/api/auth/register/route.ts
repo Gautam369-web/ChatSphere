@@ -38,12 +38,16 @@ export async function POST(req: Request) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Generate unique 5-digit connect code e.g. 45632
+    const connectCode = Math.floor(10000 + Math.random() * 90000).toString();
+
     // Create user with profile
     const user = await prisma.user.create({
       data: {
         name,
         username: lowerUsername,
         email: lowerEmail,
+        connectCode,
         password: hashedPassword,
         image: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`,
         profile: {

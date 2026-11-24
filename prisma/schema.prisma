@@ -67,6 +67,7 @@ model User {
   password       String?
   image          String?
   username       String?   @unique
+  connectCode    String?   @unique
   bio            String?   @default("")
   statusMessage  String?   @default("Available")
   role           UserRole  @default(USER)

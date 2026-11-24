@@ -16,6 +16,7 @@ async function main() {
     create: {
       name: 'Alice Johnson',
       username: 'alice',
+      connectCode: '45632',
       email: 'alice@chatsphere.io',
       password: hashedPassword,
       image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
@@ -42,6 +43,7 @@ async function main() {
     create: {
       name: 'Bob Smith',
       username: 'bob',
+      connectCode: '12345',
       email: 'bob@chatsphere.io',
       password: hashedPassword,
       image: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
@@ -69,6 +71,7 @@ async function main() {
     create: {
       name: 'Charlie Davis',
       username: 'charlie',
+      connectCode: '78901',
       email: 'charlie@chatsphere.io',
       password: hashedPassword,
       image: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150',
@@ -95,6 +98,7 @@ async function main() {
     create: {
       name: 'Dana Scully',
       username: 'dana',
+      connectCode: '99887',
       email: 'dana@chatsphere.io',
       password: hashedPassword,
       image: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150',

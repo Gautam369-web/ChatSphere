@@ -5,13 +5,13 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { editMessageSchema } from "@/lib/validations/message";
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, context: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { id: messageId } = params;
+  const { id: messageId } = await context.params;
   const userId = session.user.id;
 
   try {
@@ -81,13 +81,13 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
 }
 
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: Request, context: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { id: messageId } = params;
+  const { id: messageId } = await context.params;
   const userId = session.user.id;
   const { searchParams } = new URL(req.url);
   const deleteForEveryone = searchParams.get("everyone") === "true";

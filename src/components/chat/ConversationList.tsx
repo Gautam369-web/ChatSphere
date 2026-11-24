@@ -16,6 +16,9 @@ import {
   Image as ImageIcon,
   Mic,
   FileText,
+  KeyRound,
+  Copy,
+  Zap,
 } from "lucide-react";
 
 interface ConversationListProps {
@@ -32,6 +35,8 @@ export function ConversationList({
 
   const {
     conversations,
+    upsertConversation,
+    setActiveConversationId,
     activeConversationId,
     onlineUsers,
     typingUsers,
@@ -40,6 +45,49 @@ export function ConversationList({
   } = useChatStore();
 
   const [activeFilter, setActiveFilter] = useState<"all" | "direct" | "groups" | "unread">("all");
+  const [connectInput, setConnectInput] = useState("");
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [connectStatus, setConnectStatus] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const myConnectCode = session?.user?.connectCode || "45632";
+
+  const handleConnectByCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!connectInput.trim()) return;
+
+    try {
+      setIsConnecting(true);
+      setConnectStatus(null);
+      const res = await fetch("/api/conversations/connect-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: connectInput.trim() }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setConnectStatus(data.error || "Failed to connect");
+      } else {
+        upsertConversation(data.conversation);
+        setActiveConversationId(data.conversation.id);
+        onSelectConversation(data.conversation.id);
+        setConnectStatus(data.message || "Connected!");
+        setConnectInput("");
+        setTimeout(() => setConnectStatus(null), 3000);
+      }
+    } catch {
+      setConnectStatus("Connection error occurred");
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+  const copyMyCode = () => {
+    navigator.clipboard.writeText(myConnectCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const filteredConversations = useMemo(() => {
     return conversations.filter((conv) => {
@@ -162,6 +210,50 @@ export function ConversationList({
           >
             <Plus className="w-4 h-4" />
           </button>
+        </div>
+
+        {/* Direct Connect ID Card */}
+        <div className="p-3 rounded-2xl bg-gradient-to-r from-indigo-950/60 to-purple-950/60 border border-indigo-500/30 flex flex-col gap-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-indigo-300 flex items-center gap-1.5">
+              <KeyRound className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Your Direct ID:</span>
+            </span>
+            <button
+              type="button"
+              onClick={copyMyCode}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-400/40 text-xs font-mono font-bold text-white transition active:scale-95"
+              title="Click to copy your Direct ID"
+            >
+              <span>{myConnectCode}</span>
+              <Copy className="w-3 h-3 text-indigo-200" />
+              {copied && <span className="text-[10px] text-emerald-300 font-sans">Copied!</span>}
+            </button>
+          </div>
+
+          <form onSubmit={handleConnectByCode} className="flex items-center gap-1.5">
+            <input
+              type="text"
+              value={connectInput}
+              onChange={(e) => setConnectInput(e.target.value)}
+              placeholder="Enter ID to connect (e.g. 45632)"
+              className="flex-1 bg-slate-950/80 border border-slate-700/80 rounded-xl py-1.5 px-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono"
+            />
+            <button
+              type="submit"
+              disabled={isConnecting || !connectInput.trim()}
+              className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-600/20 flex items-center gap-1 transition active:scale-95 disabled:opacity-50 shrink-0"
+            >
+              <Zap className="w-3.5 h-3.5" />
+              <span>{isConnecting ? "..." : "Connect"}</span>
+            </button>
+          </form>
+
+          {connectStatus && (
+            <p className="text-[11px] font-medium text-indigo-300 bg-indigo-500/10 px-2 py-1 rounded-lg border border-indigo-500/20">
+              {connectStatus}
+            </p>
+          )}
         </div>
 
         {/* Search input with Ctrl+K badge */}

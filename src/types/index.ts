@@ -4,6 +4,7 @@ export interface UserSummary {
   id: string;
   name: string | null;
   username: string;
+  connectCode?: string | null;
   email: string;
   image: string | null;
   bio?: string | null;

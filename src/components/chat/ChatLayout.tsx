@@ -466,6 +466,10 @@ export function ChatLayout() {
         isOpen={isNewChatModalOpen}
         onClose={() => setIsNewChatModalOpen(false)}
         onCreateDirectChat={handleCreateDirectChat}
+        onConnectByCode={(conv) => {
+          upsertConversation(conv);
+          setActiveConversationId(conv.id);
+        }}
         onCreateGroupChat={handleCreateGroupChat}
       />
       <CommandPalette
