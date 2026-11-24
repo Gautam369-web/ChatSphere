@@ -29,6 +29,26 @@ export function ContactsView({ onStartChat }: ContactsViewProps) {
   const [newUsername, setNewUsername] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [addStatus, setAddStatus] = useState<string | null>(null);
+  const [contactToDelete, setContactToDelete] = useState<any | null>(null);
+  const [isDeletingContact, setIsDeletingContact] = useState(false);
+
+  const handleDeleteContact = async () => {
+    if (!contactToDelete) return;
+    try {
+      setIsDeletingContact(true);
+      const res = await fetch(`/api/contacts/${contactToDelete.contactId}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        setContactToDelete(null);
+        fetchContacts();
+      }
+    } catch (err) {
+      console.error("Failed to delete contact:", err);
+    } finally {
+      setIsDeletingContact(false);
+    }
+  };
 
   const fetchContacts = async () => {
     try {
@@ -217,13 +237,22 @@ export function ContactsView({ onStartChat }: ContactsViewProps) {
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => onStartChat(u.id)}
-                      className="p-2 rounded-xl bg-indigo-600/20 text-indigo-300 hover:bg-indigo-600 hover:text-white transition"
-                      title="Open Chat"
-                    >
-                      <MessageSquare className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        onClick={() => onStartChat(u.id)}
+                        className="p-2 rounded-xl bg-indigo-600/20 text-indigo-300 hover:bg-indigo-600 hover:text-white transition cursor-pointer"
+                        title="Open Chat"
+                      >
+                        <MessageSquare className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setContactToDelete(c)}
+                        className="p-2 rounded-xl bg-rose-500/10 text-rose-400 hover:bg-rose-600 hover:text-white transition cursor-pointer"
+                        title="Delete Contact"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 );
               })
@@ -356,6 +385,59 @@ export function ContactsView({ onStartChat }: ContactsViewProps) {
                 Send Request
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* WhatsApp-Style Delete Contact Confirmation Modal */}
+      {contactToDelete && (
+        <div
+          className="fixed inset-0 z-[9999] bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+          onClick={() => {
+            if (!isDeletingContact) setContactToDelete(null);
+          }}
+        >
+          <div
+            className="w-full max-w-sm bg-white dark:bg-[#233138] rounded-2xl p-5 shadow-2xl border border-slate-200 dark:border-slate-700/80 space-y-4 animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3.5">
+              <div className="w-10 h-10 rounded-full bg-rose-500/15 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-rose-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Remove contact?
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed mt-1">
+                  Are you sure you want to remove{" "}
+                  <span className="font-semibold text-slate-900 dark:text-white">
+                    {contactToDelete.user?.name || contactToDelete.user?.username}
+                  </span>{" "}
+                  from your contacts? You can add them back anytime.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setContactToDelete(null)}
+                disabled={isDeletingContact}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteContact}
+                disabled={isDeletingContact}
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-rose-600 hover:bg-rose-500 active:scale-95 text-white shadow-md shadow-rose-600/30 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{isDeletingContact ? "Removing..." : "Remove Contact"}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
