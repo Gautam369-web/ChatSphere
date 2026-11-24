@@ -19,7 +19,7 @@ import {
   KeyRound,
   Copy,
   Zap,
-  LogOut,
+  RotateCw,
 } from "lucide-react";
 
 interface ConversationListProps {
@@ -36,6 +36,8 @@ export function ConversationList({
 
   const {
     conversations,
+    setConversations,
+    setMessages,
     upsertConversation,
     setActiveConversationId,
     activeConversationId,
@@ -48,8 +50,31 @@ export function ConversationList({
   const [activeFilter, setActiveFilter] = useState<"all" | "direct" | "groups" | "unread">("all");
   const [connectInput, setConnectInput] = useState("");
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [connectStatus, setConnectStatus] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  const handleRefresh = async () => {
+    try {
+      setIsRefreshing(true);
+      const res = await fetch("/api/conversations");
+      if (res.ok) {
+        const data = await res.json();
+        setConversations(data.conversations || []);
+      }
+      if (activeConversationId) {
+        const msgRes = await fetch(`/api/conversations/${activeConversationId}/messages?limit=50`);
+        if (msgRes.ok) {
+          const msgData = await msgRes.json();
+          setMessages(activeConversationId, msgData.messages || []);
+        }
+      }
+    } catch (err) {
+      console.error("Refresh error:", err);
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
+  };
 
   const myConnectCode = session?.user?.connectCode || "45632";
 
@@ -206,13 +231,23 @@ export function ConversationList({
               {conversations.length}
             </span>
           </h2>
-          <button
-            onClick={onOpenNewChatModal}
-            className="w-8 h-8 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center transition shadow-md shadow-indigo-600/20 active:scale-95"
-            title="Start New Chat or Group"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center transition active:scale-95 disabled:opacity-50"
+              title="Refresh messages and status"
+            >
+              <RotateCw className={`w-4 h-4 ${isRefreshing ? "animate-spin text-indigo-500" : ""}`} />
+            </button>
+            <button
+              onClick={onOpenNewChatModal}
+              className="w-8 h-8 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center transition shadow-md shadow-indigo-600/20 active:scale-95"
+              title="Start New Chat or Group"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Direct Connect ID Card */}

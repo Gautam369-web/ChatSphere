@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useSession } from "next-auth/react";
 import { formatLastSeen } from "@/lib/utils";
 import { useChatStore } from "@/store/useChatStore";
@@ -13,6 +13,7 @@ import {
   Pin,
   MoreVertical,
   ShieldAlert,
+  RotateCw,
 } from "lucide-react";
 
 interface ChatHeaderProps {
@@ -29,7 +30,28 @@ export function ChatHeader({
   const { data: session } = useSession();
   const currentUserId = session?.user?.id;
 
-  const { onlineUsers, typingUsers, toggleInfoPanel, infoPanelOpen } = useChatStore();
+  const { onlineUsers, typingUsers, toggleInfoPanel, infoPanelOpen, setMessages, setConversations } = useChatStore();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    try {
+      setIsRefreshing(true);
+      const msgRes = await fetch(`/api/conversations/${conversation.id}/messages?limit=50`);
+      if (msgRes.ok) {
+        const msgData = await msgRes.json();
+        setMessages(conversation.id, msgData.messages || []);
+      }
+      const convRes = await fetch("/api/conversations");
+      if (convRes.ok) {
+        const convData = await convRes.json();
+        setConversations(convData.conversations || []);
+      }
+    } catch (err) {
+      console.error("Refresh error in ChatHeader:", err);
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
+  };
 
   const otherMember = conversation.members.find((m) => m.userId !== currentUserId);
   const otherUser = otherMember?.user;
@@ -118,8 +140,18 @@ export function ChatHeader({
         </div>
       </div>
 
-      {/* Action Buttons: Audio Call, Video Call, Info Panel */}
+      {/* Action Buttons: Refresh, Audio Call, Video Call, Info Panel */}
       <div className="flex items-center gap-1">
+        {/* Refresh button */}
+        <button
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          title="Refresh Messages & Status"
+          className="p-2.5 rounded-xl text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 active:scale-95 transition disabled:opacity-50"
+        >
+          <RotateCw className={`w-4 h-4 ${isRefreshing ? "animate-spin text-indigo-500" : ""}`} />
+        </button>
+
         {/* 1-to-1 Calls */}
         {!conversation.isGroup && otherUser && (
           <>
