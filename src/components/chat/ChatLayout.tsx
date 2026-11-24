@@ -58,28 +58,30 @@ export function ChatLayout() {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [editingMessage, setEditingMessage] = useState<MessageItem | null>(null);
 
-  // 1. Fetch conversations on load
+  // 1. Fetch conversations on load (runs once on mount)
   const loadConversations = useCallback(async () => {
     try {
       const res = await fetch("/api/conversations");
       if (res.ok) {
         const data = await res.json();
-        setConversations(data.conversations || []);
+        const convs = data.conversations || [];
+        setConversations(convs);
         // Select first conversation if none selected on desktop
-        if (data.conversations?.length > 0 && !activeConversationId && window.innerWidth > 768) {
-          setActiveConversationId(data.conversations[0].id);
+        const currentActive = useChatStore.getState().activeConversationId;
+        if (convs.length > 0 && !currentActive && typeof window !== "undefined" && window.innerWidth > 768) {
+          setActiveConversationId(convs[0].id);
         }
       }
     } catch (err) {
       console.error("Failed to load conversations:", err);
     }
-  }, [setConversations, activeConversationId, setActiveConversationId]);
+  }, [setConversations, setActiveConversationId]);
 
   useEffect(() => {
     loadConversations();
   }, [loadConversations]);
 
-  // 2. Fetch messages when active conversation changes
+  // 2. Fetch messages strictly when active conversation ID changes
   useEffect(() => {
     if (!activeConversationId) return;
 
@@ -87,27 +89,26 @@ export function ChatLayout() {
     markAsRead(activeConversationId);
     markConversationAsRead(activeConversationId);
 
-    const loadMessages = async () => {
-      try {
-        const res = await fetch(`/api/conversations/${activeConversationId}/messages?limit=50`);
-        if (res.ok) {
-          const data = await res.json();
+    let isMounted = true;
+    fetch(`/api/conversations/${activeConversationId}/messages?limit=50`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted) {
           setMessages(activeConversationId, data.messages || []);
         }
-      } catch (err) {
+      })
+      .catch((err) => {
         console.error("Failed to load messages:", err);
-      }
-    };
-
-    loadMessages();
+      });
 
     // Mark as read on server
     fetch(`/api/conversations/${activeConversationId}/read`, { method: "POST" }).catch(() => {});
 
     return () => {
+      isMounted = false;
       leaveConversation(activeConversationId);
     };
-  }, [activeConversationId, joinConversation, leaveConversation, markAsRead, markConversationAsRead, setMessages]);
+  }, [activeConversationId]);
 
   // 3. Handle Send Message (Instant WhatsApp-style delivery)
   const handleSendMessage = (payload: {

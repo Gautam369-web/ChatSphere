@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { io, Socket } from "socket.io-client";
 import { useChatStore } from "@/store/useChatStore";
@@ -238,18 +238,33 @@ export function useSocket() {
     setActiveCall(null);
   }, [setActiveCall]);
 
-  return {
-    socket: socketRef.current,
-    joinConversation,
-    leaveConversation,
-    startTyping,
-    stopTyping,
-    emitSendMessage,
-    markAsRead,
-    emitReaction,
-    emitCall,
-    endCall,
-    acceptCall,
-    rejectCall,
-  };
+  return useMemo(
+    () => ({
+      socket: socketRef.current,
+      joinConversation,
+      leaveConversation,
+      startTyping,
+      stopTyping,
+      emitSendMessage,
+      markAsRead,
+      emitReaction,
+      emitCall,
+      endCall,
+      acceptCall,
+      rejectCall,
+    }),
+    [
+      joinConversation,
+      leaveConversation,
+      startTyping,
+      stopTyping,
+      emitSendMessage,
+      markAsRead,
+      emitReaction,
+      emitCall,
+      endCall,
+      acceptCall,
+      rejectCall,
+    ]
+  );
 }

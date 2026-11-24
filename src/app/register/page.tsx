@@ -58,10 +58,9 @@ export default function RegisterPage() {
       });
 
       if (signInRes?.ok) {
-        router.push("/chat");
-        router.refresh();
+        window.location.href = "/chat";
       } else {
-        router.push("/login");
+        window.location.href = "/login";
       }
     } catch {
       setErrorMessage("Something went wrong during sign up. Please try again.");

@@ -34,8 +34,7 @@ export default function LoginPage() {
       if (res?.error) {
         setErrorMessage(res.error);
       } else {
-        router.push("/chat");
-        router.refresh();
+        window.location.href = "/chat";
       }
     } catch {
       setErrorMessage("An unexpected error occurred. Please try again.");
