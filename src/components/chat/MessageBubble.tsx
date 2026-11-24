@@ -84,17 +84,16 @@ export function MessageBubble({
 
     if (!isHorizontalSwipeRef.current) return;
 
-    // WhatsApp swipe to right gesture
-    if (diffX > 0) {
-      const damped = diffX > 48 ? 48 + (diffX - 48) * 0.25 : diffX;
-      setDragX(Math.min(damped, 75));
-    } else {
-      setDragX(0);
-    }
+    // WhatsApp-style swipe in either direction to reply
+    const absDiff = Math.abs(diffX);
+    const damped = absDiff > 42 ? 42 + (absDiff - 42) * 0.25 : absDiff;
+    const finalVal = Math.min(damped, 70);
+
+    setDragX(diffX > 0 ? finalVal : -finalVal);
   };
 
   const handleTouchEnd = () => {
-    if (dragX >= 42) {
+    if (Math.abs(dragX) >= 36) {
       onReply(message);
       if (typeof navigator !== "undefined" && navigator.vibrate) {
         try {
@@ -283,21 +282,38 @@ export function MessageBubble({
       )}
 
       {/* Main Bubble Content Container with WhatsApp swipe-to-reply */}
-      <div className="relative flex items-center">
-        {/* Animated Swipe Reply Indicator */}
+      <div className="relative inline-flex items-center w-fit max-w-[85%] sm:max-w-[70%] md:max-w-[55%]">
+        {/* Animated Swipe Reply Indicator (Swiping Right) */}
         {dragX > 0 && (
           <div
             style={{
-              transform: `translateY(-50%) scale(${Math.min(dragX / 36, 1)})`,
-              opacity: Math.min(dragX / 26, 1),
+              transform: `translateY(-50%) scale(${Math.min(dragX / 30, 1)})`,
+              opacity: Math.min(dragX / 22, 1),
             }}
             className={`absolute -left-9 top-1/2 z-10 w-7 h-7 rounded-full flex items-center justify-center pointer-events-none transition-colors ${
-              dragX >= 42
+              dragX >= 36
                 ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/40"
                 : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-200"
             }`}
           >
-            <Reply className={`w-3.5 h-3.5 transition-transform duration-150 ${dragX >= 42 ? "scale-110 -rotate-12" : ""}`} />
+            <Reply className={`w-3.5 h-3.5 transition-transform duration-150 ${dragX >= 36 ? "scale-110 -rotate-12" : ""}`} />
+          </div>
+        )}
+
+        {/* Animated Swipe Reply Indicator (Swiping Left) */}
+        {dragX < 0 && (
+          <div
+            style={{
+              transform: `translateY(-50%) scale(${Math.min(Math.abs(dragX) / 30, 1)})`,
+              opacity: Math.min(Math.abs(dragX) / 22, 1),
+            }}
+            className={`absolute -right-9 top-1/2 z-10 w-7 h-7 rounded-full flex items-center justify-center pointer-events-none transition-colors ${
+              Math.abs(dragX) >= 36
+                ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/40"
+                : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-200"
+            }`}
+          >
+            <Reply className={`w-3.5 h-3.5 transition-transform duration-150 ${Math.abs(dragX) >= 36 ? "scale-110 rotate-12" : ""}`} />
           </div>
         )}
 
@@ -432,12 +448,12 @@ export function MessageBubble({
 
               {/* Text Message with WhatsApp-style compact inline/trailing timestamp */}
               {message.content && (!message.type || message.type === "TEXT") ? (
-                <div className="flex flex-wrap items-baseline justify-end gap-x-2 gap-y-0.5">
+                <div className="inline-flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                   <span className="text-[14px] leading-relaxed break-words text-left select-text">
                     {message.content}
                   </span>
                   <span
-                    className={`inline-flex items-center gap-1 text-[10px] select-none shrink-0 ml-auto pt-0.5 ${
+                    className={`inline-flex items-center gap-1 text-[10px] select-none shrink-0 pt-0.5 ${
                       isMine ? "text-indigo-200" : "text-slate-400 dark:text-slate-400"
                     }`}
                   >
