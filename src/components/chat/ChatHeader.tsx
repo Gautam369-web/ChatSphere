@@ -92,20 +92,21 @@ export function ChatHeader({
   const pinnedCount = conversation.pinnedMessages?.length || 0;
 
   return (
-    <header className="h-16 px-4 border-b border-slate-200 dark:border-slate-800/60 bg-white/80 dark:bg-slate-950/70 backdrop-blur-xl flex items-center justify-between z-10 shrink-0 transition-colors duration-200">
-      <div className="flex items-center gap-3">
+    <header className="h-16 px-3 sm:px-4 border-b border-slate-200 dark:border-slate-800/60 bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl flex items-center justify-between z-30 shrink-0 sticky top-0 w-full transition-colors duration-200">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 mr-2">
         {/* Mobile Back Button */}
         {onBackMobile && (
           <button
             onClick={onBackMobile}
-            className="md:hidden p-2 -ml-1 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/60 transition"
+            className="md:hidden p-2 -ml-1 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/60 transition shrink-0"
+            title="Back to conversations"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
         )}
 
         {/* Avatar */}
-        <div className="relative">
+        <div className="relative shrink-0">
           <div className="w-10 h-10 rounded-2xl overflow-hidden bg-slate-200 dark:bg-slate-800 ring-1 ring-black/5 dark:ring-white/10">
             <img src={avatar} alt={title} className="w-full h-full object-cover" />
           </div>
@@ -119,19 +120,19 @@ export function ChatHeader({
         </div>
 
         {/* Header Details */}
-        <div className="flex flex-col">
-          <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <span>{title}</span>
+        <div className="flex flex-col min-w-0 flex-1">
+          <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
+            <span className="truncate">{title}</span>
             {conversation.isGroup && conversation.isPublic && (
-              <span className="text-[10px] uppercase font-semibold px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-600 dark:text-indigo-300">
+              <span className="text-[10px] uppercase font-semibold px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 shrink-0">
                 Public
               </span>
             )}
           </h2>
-          <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
-            {getSubtitle()}
+          <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2 truncate">
+            <span className="truncate">{getSubtitle()}</span>
             {pinnedCount > 0 && (
-              <span className="flex items-center gap-1 text-[11px] text-amber-500 dark:text-amber-400">
+              <span className="flex items-center gap-1 text-[11px] text-amber-500 dark:text-amber-400 shrink-0">
                 <Pin className="w-3 h-3 fill-amber-500 dark:fill-amber-400" />
                 <span>{pinnedCount} pinned</span>
               </span>
@@ -141,7 +142,7 @@ export function ChatHeader({
       </div>
 
       {/* Action Buttons: Refresh, Audio Call, Video Call, Info Panel */}
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
         {/* Refresh button */}
         <button
           onClick={handleRefresh}

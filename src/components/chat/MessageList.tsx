@@ -38,7 +38,12 @@ export function MessageList({
   const [showScrollBottom, setShowScrollBottom] = useState(false);
 
   const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
-    bottomRef.current?.scrollIntoView({ behavior });
+    if (containerRef.current) {
+      containerRef.current.scrollTo({
+        top: containerRef.current.scrollHeight,
+        behavior,
+      });
+    }
   };
 
   useEffect(() => {

@@ -223,7 +223,7 @@ export function ConversationList({
   return (
     <div className="w-full md:w-80 lg:w-96 h-full bg-white/90 dark:bg-slate-900/70 border-r border-slate-200 dark:border-slate-800/60 flex flex-col shrink-0 pb-16 md:pb-0 transition-colors duration-200">
       {/* Header & Search */}
-      <div className="p-4 border-b border-slate-200 dark:border-slate-800/60 flex flex-col gap-3">
+      <div className="p-4 border-b border-slate-200 dark:border-slate-800/60 flex flex-col gap-3 shrink-0">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
             Messages

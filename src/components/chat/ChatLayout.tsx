@@ -73,6 +73,9 @@ export function ChatLayout() {
     if (isPopStateRef.current) return;
 
     const isMobile = window.innerWidth < 768;
+    if (isMobile) {
+      window.scrollTo(0, 0);
+    }
     if (!isMobile) return;
 
     if (activeConversationId) {
@@ -543,7 +546,7 @@ export function ChatLayout() {
           <main
             className={`${
               !activeConversationId ? "hidden md:flex" : "flex"
-            } flex-1 flex-col h-full bg-slate-100/50 dark:bg-slate-950 min-w-0 relative`}
+            } flex-1 flex-col h-full max-h-[100dvh] overflow-hidden bg-slate-100/50 dark:bg-slate-950 min-w-0 relative`}
           >
             {activeConversation ? (
               <>

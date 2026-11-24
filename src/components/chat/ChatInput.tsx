@@ -181,7 +181,7 @@ export function ChatInput({
   };
 
   return (
-    <div className="relative p-2.5 sm:p-3 border-t border-slate-200 dark:border-slate-800/60 bg-white/90 dark:bg-slate-950/80 backdrop-blur-xl transition-colors duration-200">
+    <div className="relative p-2.5 sm:p-3 border-t border-slate-200 dark:border-slate-800/60 bg-white/90 dark:bg-slate-950/80 backdrop-blur-xl shrink-0 z-20 transition-colors duration-200">
       {/* Replying Banner */}
       {replyingTo && (
         <div className="mb-2 p-2.5 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs">
