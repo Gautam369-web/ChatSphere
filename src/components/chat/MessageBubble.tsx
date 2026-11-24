@@ -141,7 +141,7 @@ export function MessageBubble({
         setShowMoreMenu(false);
         setShowQuickReactions(false);
       }}
-      className={`group relative flex gap-2 my-0.5 px-1 sm:px-2 ${
+      className={`group relative flex gap-2 my-[1.5px] px-1 sm:px-2 ${
         isMine ? "justify-end" : "justify-start"
       }`}
     >
@@ -339,27 +339,27 @@ export function MessageBubble({
 
           {/* Bubble */}
           <div
-            className={`relative rounded-2xl px-2.5 py-1 text-sm shadow-xs transition-all ${
+            className={`relative rounded-lg px-2.5 py-1 text-sm shadow-xs transition-all ${
               isDeleted
                 ? "bg-slate-100 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/50 text-slate-400 italic"
                 : isMine
-                ? "bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white rounded-tr-xs shadow-indigo-900/10"
-                : "bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-tl-xs border border-slate-200/80 dark:border-slate-700/60 shadow-xs"
+                ? "bg-indigo-600 dark:bg-[#005c4b] text-white rounded-tr-none shadow-xs"
+                : "bg-white dark:bg-[#202c33] text-slate-900 dark:text-[#e9edef] rounded-tl-none border border-slate-200/60 dark:border-transparent shadow-xs"
             }`}
           >
           {/* Reply Quote Banner */}
           {message.replyTo && !isDeleted && (
             <div
-              className={`mb-1.5 p-1.5 rounded-lg text-xs border-l-3 ${
+              className={`mb-1 p-1.5 rounded-md text-xs border-l-3 ${
                 isMine
-                  ? "bg-black/15 border-white/60 text-indigo-100"
-                  : "bg-slate-100 dark:bg-slate-900/80 border-indigo-500 text-slate-600 dark:text-slate-300"
+                  ? "bg-black/20 border-[#00a884] text-slate-100"
+                  : "bg-black/10 dark:bg-black/25 border-[#00a884] text-slate-200"
               }`}
             >
-              <span className="font-semibold block text-[11px] truncate">
-                {message.replyTo.sender?.name || "Reply"}
+              <span className="font-semibold block text-[11.5px] text-[#53bdeb] truncate">
+                {message.replyTo.sender?.name || message.replyTo.sender?.username || "You"}
               </span>
-              <span className="line-clamp-1 opacity-80 text-[11px]">
+              <span className="line-clamp-1 opacity-85 text-[11px] text-slate-200 dark:text-slate-300">
                 {message.replyTo.content || (message.replyTo.type === "IMAGE" ? "Photo" : "Attachment")}
               </span>
             </div>
@@ -448,20 +448,11 @@ export function MessageBubble({
 
               {/* Text Message with WhatsApp-style compact inline/trailing timestamp */}
               {message.content && (!message.type || message.type === "TEXT") ? (
-                <div className="relative">
-                  <p className="text-[13.5px] sm:text-[14px] leading-snug break-words text-left select-text m-0">
-                    <span>{message.content}</span>
-                    {/* Inline spacer to reserve space for the bottom-right timestamp without breaking line */}
-                    <span
-                      className={`inline-block ${
-                        isMine ? "w-[54px]" : "w-[38px]"
-                      } h-2.5 select-none pointer-events-none`}
-                      aria-hidden="true"
-                    />
-                  </p>
+                <div className="text-[14.2px] leading-[19px] break-words text-left select-text">
+                  <span>{message.content}</span>
                   <span
-                    className={`absolute right-0 bottom-0 inline-flex items-center gap-0.5 text-[10px] select-none shrink-0 whitespace-nowrap leading-none pb-0.5 ${
-                      isMine ? "text-indigo-200" : "text-slate-400 dark:text-slate-400"
+                    className={`float-right ml-2.5 mt-1 inline-flex items-center gap-1 text-[11px] leading-none select-none shrink-0 whitespace-nowrap ${
+                      isMine ? "text-emerald-100/80 dark:text-[#8696a0]" : "text-slate-400 dark:text-[#8696a0]"
                     }`}
                   >
                     {message.editedAt && <span className="text-[9px] opacity-80">(edited)</span>}
@@ -471,13 +462,13 @@ export function MessageBubble({
                     {isMine && (
                       <span className="ml-0.5">
                         {message.isOptimistic ? (
-                          <Clock className="w-3 h-3 text-indigo-300 animate-spin" />
+                          <Clock className="w-3 h-3 text-emerald-200 animate-spin" />
                         ) : message.status === "SEEN" ? (
-                          <CheckCheck className="w-3.5 h-3.5 text-cyan-300" />
+                          <CheckCheck className="w-3.5 h-3.5 text-cyan-300 dark:text-[#53bdeb]" />
                         ) : message.status === "DELIVERED" ? (
-                          <CheckCheck className="w-3.5 h-3.5 text-indigo-200" />
+                          <CheckCheck className="w-3.5 h-3.5 text-emerald-100 dark:text-[#8696a0]" />
                         ) : (
-                          <Check className="w-3.5 h-3.5 text-indigo-200" />
+                          <Check className="w-3.5 h-3.5 text-emerald-100 dark:text-[#8696a0]" />
                         )}
                       </span>
                     )}
