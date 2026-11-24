@@ -58,6 +58,159 @@ export function ChatLayout() {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [editingMessage, setEditingMessage] = useState<MessageItem | null>(null);
 
+  const isPopStateRef = React.useRef(false);
+
+  // Initialize base history state on mount
+  useEffect(() => {
+    if (typeof window !== "undefined" && !window.history.state?.chatsphere) {
+      window.history.replaceState({ chatsphere: "root" }, "");
+    }
+  }, []);
+
+  // Sync mobile chat screen with browser history stack
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (isPopStateRef.current) return;
+
+    const isMobile = window.innerWidth < 768;
+    if (!isMobile) return;
+
+    if (activeConversationId) {
+      if (window.history.state?.chatsphere === "chat") {
+        window.history.replaceState({ chatsphere: "chat", id: activeConversationId }, "");
+      } else {
+        window.history.pushState({ chatsphere: "chat", id: activeConversationId }, "");
+      }
+    }
+  }, [activeConversationId]);
+
+  // Sync mobile tab changes with browser history
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (isPopStateRef.current) return;
+
+    const isMobile = window.innerWidth < 768;
+    if (!isMobile) return;
+
+    if (currentTab !== "chats") {
+      if (window.history.state?.chatsphere === "tab") {
+        window.history.replaceState({ chatsphere: "tab", tab: currentTab }, "");
+      } else if (window.history.state?.chatsphere !== "chat" && window.history.state?.chatsphere !== "modal") {
+        window.history.pushState({ chatsphere: "tab", tab: currentTab }, "");
+      }
+    }
+  }, [currentTab]);
+
+  // Sync mobile new chat modal with browser history
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (isPopStateRef.current) return;
+
+    const isMobile = window.innerWidth < 768;
+    if (!isMobile) return;
+
+    if (isNewChatModalOpen) {
+      if (window.history.state?.chatsphere !== "modal") {
+        window.history.pushState({ chatsphere: "modal" }, "");
+      }
+    }
+  }, [isNewChatModalOpen]);
+
+  // Sync mobile command palette with browser history
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (isPopStateRef.current) return;
+
+    const isMobile = window.innerWidth < 768;
+    if (!isMobile) return;
+
+    if (isCommandPaletteOpen) {
+      if (window.history.state?.chatsphere !== "command") {
+        window.history.pushState({ chatsphere: "command" }, "");
+      }
+    }
+  }, [isCommandPaletteOpen]);
+
+  // Handle hardware & browser back button (popstate)
+  useEffect(() => {
+    const handlePopState = () => {
+      isPopStateRef.current = true;
+
+      // 1. If command palette is open, close it
+      if (isCommandPaletteOpen) {
+        setIsCommandPaletteOpen(false);
+        setTimeout(() => { isPopStateRef.current = false; }, 120);
+        return;
+      }
+
+      // 2. If new chat modal is open, close it
+      if (isNewChatModalOpen) {
+        setIsNewChatModalOpen(false);
+        setTimeout(() => { isPopStateRef.current = false; }, 120);
+        return;
+      }
+
+      // 3. If right info panel is open, close it
+      if (useChatStore.getState().infoPanelOpen) {
+        setInfoPanelOpen(false);
+        setTimeout(() => { isPopStateRef.current = false; }, 120);
+        return;
+      }
+
+      // 4. If mobile chat is active, close chat back to conversation list!
+      if (useChatStore.getState().activeConversationId) {
+        setActiveConversationId(null);
+        setTimeout(() => { isPopStateRef.current = false; }, 120);
+        return;
+      }
+
+      // 5. If on another tab, return to chats list
+      if (currentTab !== "chats") {
+        setCurrentTab("chats");
+        setTimeout(() => { isPopStateRef.current = false; }, 120);
+        return;
+      }
+
+      setTimeout(() => { isPopStateRef.current = false; }, 120);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [
+    isCommandPaletteOpen,
+    isNewChatModalOpen,
+    currentTab,
+    setActiveConversationId,
+    setInfoPanelOpen,
+  ]);
+
+  // Mobile In-app Back button handler (syncs with history)
+  const handleBackMobile = useCallback(() => {
+    if (typeof window !== "undefined" && window.history.state?.chatsphere === "chat") {
+      window.history.back();
+    } else {
+      setActiveConversationId(null);
+    }
+  }, [setActiveConversationId]);
+
+  // Modal close handler (syncs with history)
+  const handleCloseNewChatModal = useCallback(() => {
+    if (typeof window !== "undefined" && window.history.state?.chatsphere === "modal") {
+      window.history.back();
+    } else {
+      setIsNewChatModalOpen(false);
+    }
+  }, []);
+
+  // Command palette close handler (syncs with history)
+  const handleCloseCommandPalette = useCallback(() => {
+    if (typeof window !== "undefined" && window.history.state?.chatsphere === "command") {
+      window.history.back();
+    } else {
+      setIsCommandPaletteOpen(false);
+    }
+  }, []);
+
   // 1. Fetch conversations on load (runs once on mount)
   const loadConversations = useCallback(async () => {
     try {
@@ -396,7 +549,7 @@ export function ChatLayout() {
               <>
                 <ChatHeader
                   conversation={activeConversation}
-                  onBackMobile={() => setActiveConversationId(null)}
+                  onBackMobile={handleBackMobile}
                   onInitiateCall={handleInitiateCall}
                 />
 
@@ -463,7 +616,7 @@ export function ChatLayout() {
       <CallModal />
       <NewChatModal
         isOpen={isNewChatModalOpen}
-        onClose={() => setIsNewChatModalOpen(false)}
+        onClose={handleCloseNewChatModal}
         onCreateDirectChat={handleCreateDirectChat}
         onConnectByCode={(conv) => {
           upsertConversation(conv);
@@ -473,7 +626,7 @@ export function ChatLayout() {
       />
       <CommandPalette
         isOpen={isCommandPaletteOpen}
-        onClose={() => setIsCommandPaletteOpen(false)}
+        onClose={handleCloseCommandPalette}
         onOpenNewChat={() => setIsNewChatModalOpen(true)}
       />
     </div>
