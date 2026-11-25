@@ -233,6 +233,25 @@ export function useSocket() {
       }
     });
 
+    socket.on("chat_cleared", ({ conversationId }: { conversationId: string }) => {
+      const state = useChatStore.getState();
+      state.setMessages(conversationId, []);
+      state.setConversations(
+        state.conversations.map((conv) =>
+          conv.id === conversationId
+            ? { ...conv, messages: [], pinnedMessages: [], unreadCount: 0 }
+            : conv
+        )
+      );
+      if (state.activeConversationId === conversationId) {
+        state.setReplyingTo(null);
+      }
+    });
+
+    socket.on("conversation_deleted", ({ conversationId }: { conversationId: string }) => {
+      useChatStore.getState().removeConversation(conversationId);
+    });
+
     // Call signaling events
     socket.on("incoming_call", ({ caller, callType, conversationId, offer }: any) => {
       setActiveCall({
@@ -322,6 +341,20 @@ export function useSocket() {
     socketRef.current?.emit("reaction_update", payload);
   }, []);
 
+  const emitClearChat = useCallback((conversationId: string, memberIds?: string[]) => {
+    (socketInstance || socketRef.current)?.emit("clear_chat", {
+      conversationId,
+      memberIds,
+    });
+  }, []);
+
+  const emitDeleteConversation = useCallback((conversationId: string, memberIds?: string[]) => {
+    (socketInstance || socketRef.current)?.emit("delete_conversation", {
+      conversationId,
+      memberIds,
+    });
+  }, []);
+
   const emitCall = useCallback(
     (
       recipientId: string,
@@ -391,6 +424,8 @@ export function useSocket() {
       emitSendMessage,
       markAsRead,
       emitReaction,
+      emitClearChat,
+      emitDeleteConversation,
       emitCall,
       sendCallSignal,
       endCall,
@@ -405,6 +440,8 @@ export function useSocket() {
       emitSendMessage,
       markAsRead,
       emitReaction,
+      emitClearChat,
+      emitDeleteConversation,
       emitCall,
       sendCallSignal,
       endCall,

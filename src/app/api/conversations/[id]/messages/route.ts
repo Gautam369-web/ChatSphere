@@ -240,3 +240,59 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
     return NextResponse.json({ error: "Failed to send message" }, { status: 500 });
   }
 }
+
+export async function DELETE(req: Request, context: { params: Promise<{ id: string }> }) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { id: conversationId } = await context.params;
+  const userId = session.user.id;
+
+  try {
+    const membership = await prisma.conversationMember.findUnique({
+      where: {
+        conversationId_userId: {
+          conversationId,
+          userId,
+        },
+      },
+    });
+
+    if (!membership) {
+      return NextResponse.json({ error: "Forbidden: Not a member of this chat" }, { status: 403 });
+    }
+
+    const conversation = await prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: { isGroup: true },
+    });
+
+    if (conversation?.isGroup && membership.role !== "OWNER" && membership.role !== "ADMIN") {
+      return NextResponse.json(
+        { error: "Only group owners or admins can clear group chat for everyone" },
+        { status: 403 }
+      );
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      await tx.pinnedMessage.deleteMany({ where: { conversationId } });
+      await tx.message.updateMany({
+        where: { conversationId, replyToId: { not: null } },
+        data: { replyToId: null },
+      });
+      const deleted = await tx.message.deleteMany({ where: { conversationId } });
+      await tx.conversationMember.updateMany({
+        where: { conversationId },
+        data: { lastReadAt: new Date() },
+      });
+      return deleted;
+    });
+
+    return NextResponse.json({ success: true, clearedCount: result.count });
+  } catch (error: any) {
+    console.error("Error clearing conversation messages:", error);
+    return NextResponse.json({ error: "Failed to clear chat" }, { status: 500 });
+  }
+}

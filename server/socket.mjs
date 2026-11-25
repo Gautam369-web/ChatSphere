@@ -208,6 +208,30 @@ io.on("connection", (socket) => {
     io.to(`conversation:${conversationId}`).emit("pin_updated", pinPayload);
   });
 
+  // 8b. Clear Full Chat For Everyone (both sides in real time)
+  socket.on("clear_chat", ({ conversationId, memberIds }) => {
+    if (!conversationId) return;
+    const payload = { conversationId, clearedBy: userId };
+    io.to(`conversation:${conversationId}`).emit("chat_cleared", payload);
+    if (Array.isArray(memberIds)) {
+      memberIds.forEach((memberId) => {
+        io.to(`user:${memberId}`).emit("chat_cleared", payload);
+      });
+    }
+  });
+
+  // 8c. Delete Entire Conversation For Both Sides
+  socket.on("delete_conversation", ({ conversationId, memberIds }) => {
+    if (!conversationId) return;
+    const payload = { conversationId, deletedBy: userId };
+    io.to(`conversation:${conversationId}`).emit("conversation_deleted", payload);
+    if (Array.isArray(memberIds)) {
+      memberIds.forEach((memberId) => {
+        io.to(`user:${memberId}`).emit("conversation_deleted", payload);
+      });
+    }
+  });
+
   // 9. WebRTC 1-to-1 Audio/Video Call Signaling
   socket.on("call_initiate", ({ recipientId, callType, caller, conversationId, offer }) => {
     console.log(`[Socket Call] Initiate ${callType} from ${caller.name} to ${recipientId}`);
