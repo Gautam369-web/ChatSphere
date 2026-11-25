@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { useSession } from "next-auth/react";
 import { useChatStore } from "@/store/useChatStore";
 import { useSocket } from "@/hooks/useSocket";
@@ -9,16 +10,18 @@ import { ConversationList } from "./ConversationList";
 import { ChatHeader } from "./ChatHeader";
 import { MessageList } from "./MessageList";
 import { ChatInput } from "./ChatInput";
-import { InfoPanel } from "./InfoPanel";
-import { CallModal } from "./CallModal";
-import { CommandPalette } from "./CommandPalette";
-import { NewChatModal } from "./NewChatModal";
-import { SettingsView } from "./SettingsView";
-import { ContactsView } from "./ContactsView";
-import { AdminView } from "./AdminView";
 import { MessageItem, UserSummary } from "@/types";
 import { MessageSquare, Sparkles, X } from "lucide-react";
 import { sounds } from "@/lib/sound";
+
+// Lazy-load secondary panels & modals so initial chat load is ultra-fast
+const InfoPanel = dynamic(() => import("./InfoPanel").then((m) => m.InfoPanel), { ssr: false });
+const CallModal = dynamic(() => import("./CallModal").then((m) => m.CallModal), { ssr: false });
+const CommandPalette = dynamic(() => import("./CommandPalette").then((m) => m.CommandPalette), { ssr: false });
+const NewChatModal = dynamic(() => import("./NewChatModal").then((m) => m.NewChatModal), { ssr: false });
+const SettingsView = dynamic(() => import("./SettingsView").then((m) => m.SettingsView), { ssr: false });
+const ContactsView = dynamic(() => import("./ContactsView").then((m) => m.ContactsView), { ssr: false });
+const AdminView = dynamic(() => import("./AdminView").then((m) => m.AdminView), { ssr: false });
 
 export function ChatLayout() {
   const { data: session } = useSession();
@@ -217,7 +220,51 @@ export function ChatLayout() {
     }
   }, []);
 
-  // 1. Fetch conversations on load (runs once on mount)
+  // 1. Instant 0ms SWR hydration from localStorage + background network sync + prefetch top chats
+  useEffect(() => {
+    if (!currentUser?.id || typeof window === "undefined") return;
+    try {
+      const cached = localStorage.getItem(`chatsphere_cache_${currentUser.id}`);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed.conversations) && parsed.conversations.length > 0 && useChatStore.getState().conversations.length === 0) {
+          setConversations(parsed.conversations);
+          if (parsed.messages && typeof parsed.messages === "object") {
+            Object.entries(parsed.messages).forEach(([convId, msgs]) => {
+              if (Array.isArray(msgs) && !useChatStore.getState().messages[convId]) {
+                setMessages(convId, msgs as MessageItem[]);
+              }
+            });
+          }
+          if (!useChatStore.getState().activeConversationId && window.innerWidth > 768) {
+            setActiveConversationId(parsed.conversations[0].id);
+          }
+        }
+      }
+    } catch {}
+  }, [currentUser?.id, setConversations, setMessages, setActiveConversationId]);
+
+  // Persist compact snapshot to localStorage for instant reloads
+  useEffect(() => {
+    if (!currentUser?.id || typeof window === "undefined" || conversations.length === 0) return;
+    const timer = setTimeout(() => {
+      try {
+        const topIds = conversations.slice(0, 8).map((c) => c.id);
+        const cachedMessages: Record<string, MessageItem[]> = {};
+        topIds.forEach((id) => {
+          if (messages[id]?.length) {
+            cachedMessages[id] = messages[id].slice(-40);
+          }
+        });
+        localStorage.setItem(
+          `chatsphere_cache_${currentUser.id}`,
+          JSON.stringify({ conversations: conversations.slice(0, 25), messages: cachedMessages })
+        );
+      } catch {}
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [currentUser?.id, conversations, messages]);
+
   const loadConversations = useCallback(async () => {
     try {
       const res = await fetch("/api/conversations");
@@ -230,11 +277,25 @@ export function ChatLayout() {
         if (convs.length > 0 && !currentActive && typeof window !== "undefined" && window.innerWidth > 768) {
           setActiveConversationId(convs[0].id);
         }
+        // Silently prefetch messages for top 5 recent chats so switching is 0ms instant
+        const existingMsgs = useChatStore.getState().messages;
+        convs.slice(0, 5).forEach((conv: any) => {
+          if (!existingMsgs[conv.id]) {
+            fetch(`/api/conversations/${conv.id}/messages?limit=40`)
+              .then((r) => (r.ok ? r.json() : null))
+              .then((d) => {
+                if (d?.messages && !useChatStore.getState().messages[conv.id]) {
+                  setMessages(conv.id, d.messages);
+                }
+              })
+              .catch(() => {});
+          }
+        });
       }
     } catch (err) {
       console.error("Failed to load conversations:", err);
     }
-  }, [setConversations, setActiveConversationId]);
+  }, [setConversations, setActiveConversationId, setMessages]);
 
   useEffect(() => {
     loadConversations();

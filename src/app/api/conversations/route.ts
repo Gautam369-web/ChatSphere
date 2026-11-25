@@ -80,32 +80,53 @@ export async function GET() {
       orderBy: { updatedAt: "desc" },
     });
 
-    // Calculate unread counts per conversation for this user
-    const formatted = await Promise.all(
-      conversations.map(async (conv) => {
-        const myMember = conv.members.find((m) => m.userId === userId);
-        const lastReadAt = myMember?.lastReadAt || new Date(0);
+    // Calculate unread counts in a single batch query instead of N+1 per-conversation counts
+    const convLastReadMap = new Map<string, number>();
+    let minLastRead = new Date();
+    const convIds: string[] = [];
 
-        const unreadCount = await prisma.message.count({
-          where: {
-            conversationId: conv.id,
-            createdAt: { gt: lastReadAt },
-            senderId: { not: userId },
-          },
-        });
+    for (const conv of conversations) {
+      convIds.push(conv.id);
+      const myMember = conv.members.find((m) => m.userId === userId);
+      const lr = myMember?.lastReadAt ? new Date(myMember.lastReadAt) : new Date(0);
+      convLastReadMap.set(conv.id, lr.getTime());
+      if (lr < minLastRead) minLastRead = lr;
+    }
 
-        const formattedMessages = conv.messages.map((msg) => ({
-          ...msg,
-          status: resolveMessageStatus(msg, conv.members),
-        }));
+    const unreadCountsMap = new Map<string, number>();
+    if (convIds.length > 0) {
+      const recentUnreadCandidates = await prisma.message.findMany({
+        where: {
+          conversationId: { in: convIds },
+          createdAt: { gt: minLastRead },
+          senderId: { not: userId },
+        },
+        select: {
+          conversationId: true,
+          createdAt: true,
+        },
+      });
 
-        return {
-          ...conv,
-          messages: formattedMessages,
-          unreadCount,
-        };
-      })
-    );
+      for (const msg of recentUnreadCandidates) {
+        const threshold = convLastReadMap.get(msg.conversationId) ?? 0;
+        if (msg.createdAt.getTime() > threshold) {
+          unreadCountsMap.set(msg.conversationId, (unreadCountsMap.get(msg.conversationId) || 0) + 1);
+        }
+      }
+    }
+
+    const formatted = conversations.map((conv) => {
+      const formattedMessages = conv.messages.map((msg) => ({
+        ...msg,
+        status: resolveMessageStatus(msg, conv.members),
+      }));
+
+      return {
+        ...conv,
+        messages: formattedMessages,
+        unreadCount: unreadCountsMap.get(conv.id) || 0,
+      };
+    });
 
     return NextResponse.json({ conversations: formatted });
   } catch (error: any) {
