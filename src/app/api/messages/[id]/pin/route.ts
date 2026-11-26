@@ -18,6 +18,18 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
       return NextResponse.json({ error: "Message not found" }, { status: 404 });
     }
 
+    const membership = await prisma.conversationMember.findUnique({
+      where: {
+        conversationId_userId: {
+          conversationId: message.conversationId,
+          userId,
+        },
+      },
+    });
+    if (!membership) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const pinned = await prisma.pinnedMessage.upsert({
       where: { messageId },
       create: {
@@ -56,11 +68,24 @@ export async function DELETE(req: Request, context: { params: Promise<{ id: stri
   }
 
   const { id: messageId } = await context.params;
+  const userId = session.user.id;
 
   try {
     const message = await prisma.message.findUnique({ where: { id: messageId } });
     if (!message) {
       return NextResponse.json({ error: "Message not found" }, { status: 404 });
+    }
+
+    const membership = await prisma.conversationMember.findUnique({
+      where: {
+        conversationId_userId: {
+          conversationId: message.conversationId,
+          userId,
+        },
+      },
+    });
+    if (!membership) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     await prisma.pinnedMessage.deleteMany({

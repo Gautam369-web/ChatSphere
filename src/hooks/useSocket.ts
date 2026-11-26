@@ -355,6 +355,29 @@ export function useSocket() {
     });
   }, []);
 
+  const emitMessageEdit = useCallback(
+    (conversationId: string, messageId: string, content: string, editedAt: string) => {
+      (socketInstance || socketRef.current)?.emit("message_edit", {
+        conversationId,
+        messageId,
+        content,
+        editedAt,
+      });
+    },
+    []
+  );
+
+  const emitMessageDelete = useCallback(
+    (conversationId: string, messageId: string, deletedForEveryone: boolean) => {
+      (socketInstance || socketRef.current)?.emit("message_delete", {
+        conversationId,
+        messageId,
+        deletedForEveryone,
+      });
+    },
+    []
+  );
+
   const emitCall = useCallback(
     (
       recipientId: string,
@@ -426,6 +449,8 @@ export function useSocket() {
       emitReaction,
       emitClearChat,
       emitDeleteConversation,
+      emitMessageEdit,
+      emitMessageDelete,
       emitCall,
       sendCallSignal,
       endCall,
@@ -442,6 +467,8 @@ export function useSocket() {
       emitReaction,
       emitClearChat,
       emitDeleteConversation,
+      emitMessageEdit,
+      emitMessageDelete,
       emitCall,
       sendCallSignal,
       endCall,

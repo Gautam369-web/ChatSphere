@@ -17,6 +17,18 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
       return NextResponse.json({ error: "Message not found" }, { status: 404 });
     }
 
+    const membership = await prisma.conversationMember.findUnique({
+      where: {
+        conversationId_userId: {
+          conversationId: message.conversationId,
+          userId: session.user.id,
+        },
+      },
+    });
+    if (!membership) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const updated = await prisma.message.update({
       where: { id: messageId },
       data: { isStarred: !message.isStarred },

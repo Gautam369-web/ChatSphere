@@ -23,6 +23,26 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
 
     const { emoji } = result.data;
 
+    const message = await prisma.message.findUnique({
+      where: { id: messageId },
+      select: { id: true, conversationId: true },
+    });
+    if (!message) {
+      return NextResponse.json({ error: "Message not found" }, { status: 404 });
+    }
+
+    const membership = await prisma.conversationMember.findUnique({
+      where: {
+        conversationId_userId: {
+          conversationId: message.conversationId,
+          userId,
+        },
+      },
+    });
+    if (!membership) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     // Check if reaction already exists
     const existing = await prisma.reaction.findUnique({
       where: {

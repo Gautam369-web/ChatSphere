@@ -112,6 +112,12 @@ export function ChatInput({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (file.size > 5 * 1024 * 1024) {
+      alert("File is too large. Please select a file smaller than 5 MB.");
+      e.target.value = "";
+      return;
+    }
+
     // Simulate/Read file data URL for immediate rendering
     const reader = new FileReader();
     reader.onload = () => {

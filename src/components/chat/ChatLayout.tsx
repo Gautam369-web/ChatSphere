@@ -56,6 +56,8 @@ export function ChatLayout() {
     emitSendMessage,
     markAsRead,
     emitReaction,
+    emitMessageEdit,
+    emitMessageDelete,
     emitCall,
   } = useSocket();
 
@@ -505,6 +507,12 @@ export function ChatLayout() {
             content: data.message.content,
             editedAt: data.message.editedAt,
           });
+          emitMessageEdit(
+            activeConversationId,
+            message.id,
+            data.message.content,
+            data.message.editedAt
+          );
         }
       }
     } catch (err) {
@@ -528,6 +536,7 @@ export function ChatLayout() {
               mediaUrl: null,
               fileName: null,
             });
+            emitMessageDelete(activeConversationId, messageId, true);
           } else {
             removeMessage(activeConversationId, messageId);
           }
