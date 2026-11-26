@@ -43,6 +43,25 @@ export function ChatInput({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingStartRef = useRef<number>(0);
+
+  // Cleanup active voice recording on unmount
+  useEffect(() => {
+    return () => {
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+        try {
+          mediaRecorderRef.current.stop();
+        } catch {}
+      }
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((t) => t.stop());
+      }
+    };
+  }, []);
 
   // Auto focus input on desktop
   useEffect(() => {
@@ -158,29 +177,116 @@ export function ChatInput({
     }
   };
 
-  // Voice recording simulation
-  const startVoiceRecording = () => {
-    setIsRecordingVoice(true);
-    setRecordingSeconds(0);
-    timerIntervalRef.current = setInterval(() => {
-      setRecordingSeconds((prev) => prev + 1);
-    }, 1000);
+  // Real Voice Recording via MediaRecorder
+  const startVoiceRecording = async () => {
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      alert("Voice recording is not supported in this browser.");
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      });
+      mediaStreamRef.current = stream;
+      audioChunksRef.current = [];
+
+      const mimeType =
+        typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+          ? "audio/webm;codecs=opus"
+          : typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported("audio/mp4")
+          ? "audio/mp4"
+          : "";
+
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.start(100);
+      recordingStartRef.current = Date.now();
+      setIsRecordingVoice(true);
+      setRecordingSeconds(0);
+
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = setInterval(() => {
+        setRecordingSeconds(Math.floor((Date.now() - recordingStartRef.current) / 1000));
+      }, 250);
+    } catch (err) {
+      console.error("Microphone permission error:", err);
+      alert("Microphone access denied. Please allow microphone permission to send voice notes.");
+    }
   };
 
   const stopVoiceRecording = (send: boolean) => {
-    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-    setIsRecordingVoice(false);
-
-    if (send && recordingSeconds > 0) {
-      onSendMessage({
-        type: "VOICE",
-        content: "Voice note",
-        voiceDuration: recordingSeconds,
-        replyToId: replyingTo?.id || null,
-      });
-      setReplyingTo(null);
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
     }
+
+    const durationSec = Math.max(1, Math.round((Date.now() - recordingStartRef.current) / 1000));
+    const recorder = mediaRecorderRef.current;
+    const stream = mediaStreamRef.current;
+    const currentReply = replyingTo;
+
+    setIsRecordingVoice(false);
     setRecordingSeconds(0);
+
+    if (!recorder) {
+      if (stream) stream.getTracks().forEach((t) => t.stop());
+      return;
+    }
+
+    recorder.onstop = () => {
+      if (stream) {
+        stream.getTracks().forEach((t) => t.stop());
+        mediaStreamRef.current = null;
+      }
+
+      if (!send || audioChunksRef.current.length === 0) {
+        audioChunksRef.current = [];
+        return;
+      }
+
+      const blobType = recorder.mimeType || "audio/webm";
+      const audioBlob = new Blob(audioChunksRef.current, { type: blobType });
+      audioChunksRef.current = [];
+
+      if (audioBlob.size === 0) return;
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const dataUrl = reader.result as string;
+        if (!dataUrl) return;
+        const ext = blobType.includes("mp4") ? "m4a" : "webm";
+        onSendMessage({
+          type: "VOICE",
+          content: "Voice note",
+          mediaUrl: dataUrl,
+          fileName: `voice_${Date.now()}.${ext}`,
+          fileSize: audioBlob.size,
+          voiceDuration: durationSec,
+          replyToId: currentReply?.id || null,
+          replyTo: currentReply || null,
+        });
+        setReplyingTo(null);
+      };
+      reader.readAsDataURL(audioBlob);
+    };
+
+    try {
+      if (recorder.state !== "inactive") {
+        recorder.stop();
+      } else if (stream) {
+        stream.getTracks().forEach((t) => t.stop());
+      }
+    } catch {
+      if (stream) stream.getTracks().forEach((t) => t.stop());
+    }
   };
 
   return (

@@ -49,6 +49,9 @@ export function MessageBubble({
   onDelete,
 }: MessageBubbleProps) {
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [audioProgress, setAudioProgress] = useState(0);
+  const [audioCurrentTime, setAudioCurrentTime] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const [showActions, setShowActions] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showQuickReactions, setShowQuickReactions] = useState(false);
@@ -137,7 +140,28 @@ export function MessageBubble({
   });
 
   const toggleAudio = () => {
-    setIsPlayingAudio(!isPlayingAudio);
+    const audio = audioRef.current;
+    if (!audio || !message.mediaUrl) return;
+
+    if (isPlayingAudio) {
+      audio.pause();
+      setIsPlayingAudio(false);
+    } else {
+      audio
+        .play()
+        .then(() => setIsPlayingAudio(true))
+        .catch((err) => {
+          console.warn("Audio playback failed:", err);
+          setIsPlayingAudio(false);
+        });
+    }
+  };
+
+  const formatAudioSeconds = (sec: number) => {
+    const s = Math.max(0, Math.floor(sec));
+    const mins = Math.floor(s / 60);
+    const rem = s % 60;
+    return `${mins}:${rem.toString().padStart(2, "0")}`;
   };
 
   if (message.type === "SYSTEM") {
@@ -419,30 +443,67 @@ export function MessageBubble({
                 </div>
               )}
 
-              {/* Media: Voice Note with Interactive Waveform Simulation */}
+              {/* Media: Voice Note with Real Audio Playback & Progress Waveform */}
               {message.type === "VOICE" && (
-                <div className="flex items-center gap-3 py-1 min-w-[200px]">
+                <div className="flex items-center gap-2.5 py-1 min-w-[205px]">
+                  {message.mediaUrl && (
+                    <audio
+                      ref={audioRef}
+                      src={message.mediaUrl}
+                      preload="metadata"
+                      onTimeUpdate={() => {
+                        const a = audioRef.current;
+                        if (!a) return;
+                        setAudioCurrentTime(a.currentTime);
+                        const dur = a.duration && isFinite(a.duration) ? a.duration : message.voiceDuration || 1;
+                        setAudioProgress(Math.min(100, (a.currentTime / dur) * 100));
+                      }}
+                      onEnded={() => {
+                        setIsPlayingAudio(false);
+                        setAudioProgress(0);
+                        setAudioCurrentTime(0);
+                      }}
+                      onPause={() => setIsPlayingAudio(false)}
+                    />
+                  )}
                   <button
+                    type="button"
                     onClick={toggleAudio}
-                    className="w-8 h-8 rounded-full bg-white text-indigo-600 flex items-center justify-center shadow transition active:scale-95"
+                    disabled={!message.mediaUrl}
+                    className="w-8 h-8 rounded-full bg-white text-indigo-600 dark:text-[#005c4b] flex items-center justify-center shadow transition active:scale-95 shrink-0 disabled:opacity-50 cursor-pointer"
+                    title={isPlayingAudio ? "Pause voice note" : "Play voice note"}
                   >
                     {isPlayingAudio ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-0.5" />}
                   </button>
 
                   <div className="flex-1 flex items-center gap-1 h-6">
-                    {[3, 6, 2, 8, 4, 7, 5, 3, 9, 4, 6, 2, 7, 5, 8, 3].map((height, idx) => (
-                      <span
-                        key={idx}
-                        style={{ height: `${height * 2.5}px` }}
-                        className={`w-1 rounded-full transition-all ${
-                          isPlayingAudio ? "bg-white animate-pulse" : isMine ? "bg-indigo-300" : "bg-slate-400"
-                        }`}
-                      />
-                    ))}
+                    {[3, 6, 2, 8, 4, 7, 5, 3, 9, 4, 6, 2, 7, 5, 8, 3].map((height, idx, arr) => {
+                      const barPct = ((idx + 1) / arr.length) * 100;
+                      const isPlayed = audioProgress >= barPct;
+                      return (
+                        <span
+                          key={idx}
+                          style={{ height: `${height * 2.5}px` }}
+                          className={`w-1 rounded-full transition-colors duration-150 ${
+                            isPlayed
+                              ? "bg-white dark:bg-[#53bdeb]"
+                              : isPlayingAudio
+                              ? isMine
+                                ? "bg-emerald-200/70"
+                                : "bg-slate-300 dark:bg-slate-400"
+                              : isMine
+                              ? "bg-emerald-200/50 dark:bg-white/40"
+                              : "bg-slate-400/70 dark:bg-slate-500"
+                          }`}
+                        />
+                      );
+                    })}
                   </div>
 
-                  <span className="text-[11px] font-mono opacity-80">
-                    {message.voiceDuration ? `${message.voiceDuration}s` : "0:05"}
+                  <span className="text-[11px] font-mono opacity-85 shrink-0">
+                    {isPlayingAudio
+                      ? formatAudioSeconds(audioCurrentTime)
+                      : formatAudioSeconds(message.voiceDuration || 0)}
                   </span>
                 </div>
               )}
