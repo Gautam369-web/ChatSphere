@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { motion } from "framer-motion";
 import { useSession } from "next-auth/react";
 import { useChatStore } from "@/store/useChatStore";
 import { useSocket, getSocket } from "@/hooks/useSocket";
@@ -55,6 +56,7 @@ export function CallModal() {
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
   const modalContainerRef = useRef<HTMLDivElement | null>(null);
+  const videoAreaRef = useRef<HTMLDivElement | null>(null);
 
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
@@ -379,12 +381,20 @@ export function CallModal() {
 
   // Toggle Microphone
   const toggleMicrophone = () => {
+    const nextMuted = !isMuted;
     if (localStreamRef.current) {
       localStreamRef.current.getAudioTracks().forEach((track) => {
-        track.enabled = !track.enabled;
+        track.enabled = !nextMuted;
       });
-      setIsMuted((prev) => !prev);
     }
+    if (pcRef.current) {
+      pcRef.current.getSenders().forEach((sender) => {
+        if (sender.track && sender.track.kind === "audio") {
+          sender.track.enabled = !nextMuted;
+        }
+      });
+    }
+    setIsMuted(nextMuted);
   };
 
   // Toggle Camera
@@ -423,29 +433,59 @@ export function CallModal() {
     }
   };
 
-  // Flip Camera (Mobile)
+  // Flip Camera (Mobile & Multi-Cam Desktop)
   const flipCamera = async () => {
-    if (!localStreamRef.current || !pcRef.current) return;
+    if (!localStreamRef.current) return;
     const nextMode = facingMode === "user" ? "environment" : "user";
-    try {
-      const newStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: nextMode },
-      });
-      const newTrack = newStream.getVideoTracks()[0];
+    const oldTracks = localStreamRef.current.getVideoTracks();
+    const oldDeviceId = oldTracks[0]?.getSettings?.().deviceId;
 
-      const sender = pcRef.current.getSenders().find((s) => s.track?.kind === "video");
-      if (sender) {
-        await sender.replaceTrack(newTrack);
+    try {
+      // Stop existing video track first so mobile hardware releases the camera lock
+      oldTracks.forEach((t) => {
+        t.stop();
+        localStreamRef.current?.removeTrack(t);
+      });
+
+      let newStream: MediaStream | null = null;
+      try {
+        newStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { exact: nextMode }, width: { ideal: 1280 }, height: { ideal: 720 } },
+        });
+      } catch {
+        // Fallback: enumerate video devices and pick a different camera deviceId
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter((d) => d.kind === "videoinput");
+        const otherDevice = videoDevices.find((d) => d.deviceId && d.deviceId !== oldDeviceId);
+        if (otherDevice) {
+          newStream = await navigator.mediaDevices.getUserMedia({
+            video: { deviceId: { exact: otherDevice.deviceId } },
+          });
+        } else {
+          newStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: nextMode },
+          });
+        }
       }
 
-      const oldTracks = localStreamRef.current.getVideoTracks();
-      oldTracks.forEach((t) => t.stop());
-      localStreamRef.current.removeTrack(oldTracks[0]);
+      const newTrack = newStream.getVideoTracks()[0];
+      if (!newTrack) return;
+
+      newTrack.enabled = !isVideoOff;
+
+      if (pcRef.current) {
+        const sender = pcRef.current.getSenders().find((s) => s.track?.kind === "video");
+        if (sender) {
+          await sender.replaceTrack(newTrack);
+        }
+      }
+
       localStreamRef.current.addTrack(newTrack);
       setLocalStream(new MediaStream(localStreamRef.current.getTracks()));
       setFacingMode(nextMode);
     } catch (err) {
       console.warn("Could not flip camera:", err);
+      setErrorMessage("Could not switch camera on this device.");
     }
   };
 
@@ -490,14 +530,20 @@ export function CallModal() {
     }
   };
 
-  // Toggle Speaker Audio Mute (mutes both remote audio & video elements)
+  // Toggle Speaker Audio Mute (controls remote audio track + audio/video elements)
   const toggleSpeaker = () => {
     const nextMuted = !isSpeakerMuted;
     if (remoteAudioRef.current) {
       remoteAudioRef.current.muted = nextMuted;
+      remoteAudioRef.current.volume = nextMuted ? 0 : 1;
     }
     if (remoteVideoRef.current) {
-      remoteVideoRef.current.muted = nextMuted;
+      remoteVideoRef.current.muted = true; // Keep video element muted so remoteAudioRef is single clean output
+    }
+    if (remoteStream) {
+      remoteStream.getAudioTracks().forEach((track) => {
+        track.enabled = !nextMuted;
+      });
     }
     setIsSpeakerMuted(nextMuted);
   };
@@ -585,12 +631,16 @@ export function CallModal() {
 
         {/* Center Content: Video Streams or Avatar Calling Card */}
         {isVideoCall ? (
-          <div className="relative flex-1 w-full h-full flex items-center justify-center overflow-hidden bg-slate-950">
-            {/* Remote Video Stream (Main View) */}
+          <div
+            ref={videoAreaRef}
+            className="relative flex-1 w-full h-full flex items-center justify-center overflow-hidden bg-slate-950"
+          >
+            {/* Remote Video Stream (Main View - muted so remoteAudioRef handles speaker control cleanly) */}
             <video
               ref={remoteVideoRef}
               autoPlay
               playsInline
+              muted
               className={`w-full h-full object-cover transition-opacity duration-300 ${
                 hasRemoteVideo ? "opacity-100" : "opacity-0 absolute"
               }`}
@@ -630,20 +680,28 @@ export function CallModal() {
               </div>
             )}
 
-            {/* Local Camera Floating PiP (Bottom-Right) */}
-            <div
-              className={`absolute bottom-24 right-4 sm:bottom-28 sm:right-6 w-32 h-44 sm:w-40 sm:h-56 rounded-2xl overflow-hidden border-2 border-white/30 shadow-2xl bg-black z-30 transition-all ${
+            {/* Draggable Local Camera Floating PiP */}
+            <motion.div
+              drag
+              dragConstraints={videoAreaRef}
+              dragElastic={0.08}
+              dragMomentum={false}
+              whileDrag={{ scale: 1.05 }}
+              className={`absolute bottom-24 right-4 sm:bottom-28 sm:right-6 w-32 h-44 sm:w-40 sm:h-56 rounded-2xl overflow-hidden border-2 border-white/30 shadow-2xl bg-black z-30 cursor-grab active:cursor-grabbing touch-none ${
                 isVideoOff ? "hidden" : "block"
               }`}
+              title="Drag to move camera view"
             >
               <video
                 ref={localVideoRef}
                 autoPlay
                 playsInline
                 muted
-                className="w-full h-full object-cover scale-x-[-1]"
+                className={`w-full h-full object-cover pointer-events-none ${
+                  facingMode === "user" && !isScreenSharing ? "scale-x-[-1]" : ""
+                }`}
               />
-            </div>
+            </motion.div>
           </div>
         ) : (
           /* Voice Call Center Avatar Screen */
