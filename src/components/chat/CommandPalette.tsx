@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { useTheme } from "@/components/providers/ThemeProvider";
 import { useChatStore } from "@/store/useChatStore";
+import { fastLogout } from "@/lib/logout";
 import {
   Search,
   MessageSquare,
@@ -25,6 +26,7 @@ interface CommandPaletteProps {
 
 export function CommandPalette({ isOpen, onClose, onOpenNewChat }: CommandPaletteProps) {
   const router = useRouter();
+  const { data: session } = useSession();
   const { theme, setTheme } = useTheme();
   const { conversations, setActiveConversationId } = useChatStore();
   const [query, setQuery] = useState("");
@@ -110,8 +112,8 @@ export function CommandPalette({ isOpen, onClose, onOpenNewChat }: CommandPalett
 
           <button
             onClick={() => {
-              signOut({ callbackUrl: "/login" });
               onClose();
+              fastLogout(session?.user?.id);
             }}
             className="w-full p-2 rounded-xl hover:bg-rose-500/10 flex items-center justify-between text-rose-300 transition"
           >

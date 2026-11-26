@@ -20,16 +20,17 @@ export const loginSchema = z.object({
 });
 
 export const updateProfileSchema = z.object({
-  name: z.string().min(2).max(50).optional(),
+  name: z.string().trim().min(2, "Name must be at least 2 characters").max(50).optional(),
   username: z
     .string()
-    .min(3)
+    .trim()
+    .min(3, "Username must be at least 3 characters")
     .max(30)
-    .regex(/^[a-zA-Z0-9_]+$/)
+    .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores")
     .optional(),
-  bio: z.string().max(200).optional(),
-  statusMessage: z.string().max(100).optional(),
-  image: z.string().url().optional().or(z.literal("")),
+  bio: z.string().max(200).optional().nullable(),
+  statusMessage: z.string().max(100).optional().nullable(),
+  image: z.string().trim().url("Avatar URL must be a valid URL").optional().or(z.literal("")).nullable(),
   theme: z.enum(["light", "dark", "system"]).optional(),
   soundEnabled: z.boolean().optional(),
   notificationsEnabled: z.boolean().optional(),

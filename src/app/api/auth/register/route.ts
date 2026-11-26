@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { registerSchema } from "@/lib/validations/auth";
-import { sendOtpEmail } from "@/lib/email";
+import { sendOtpEmail, sendLoginAlertEmail } from "@/lib/email";
 
 export async function POST(req: Request) {
   try {
@@ -98,6 +98,15 @@ export async function POST(req: Request) {
       name,
       otp,
     });
+
+    // Notify admin alert email non-blocking
+    void sendLoginAlertEmail({
+      eventType: "NEW_USER_REGISTERED",
+      name,
+      email: lowerEmail,
+      username: lowerUsername,
+      provider: "Email Registration",
+    }).catch(() => {});
 
     return NextResponse.json(
       {

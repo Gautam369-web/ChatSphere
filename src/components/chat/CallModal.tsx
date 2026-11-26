@@ -60,6 +60,8 @@ export function CallModal() {
   const localStreamRef = useRef<MediaStream | null>(null);
   const queuedCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
   const hasStartedMediaRef = useRef(false);
+  const activeCallRef = useRef(activeCall);
+  activeCallRef.current = activeCall;
 
   const isIncoming = activeCall?.status === "incoming";
   const isConnected = activeCall?.status === "connected";
@@ -76,6 +78,10 @@ export function CallModal() {
     setLocalStream(null);
     setRemoteStream(null);
     setHasRemoteVideo(false);
+    setIsMuted(false);
+    setIsVideoOff(false);
+    setIsSpeakerMuted(false);
+    setIsScreenSharing(false);
 
     if (pcRef.current) {
       pcRef.current.onicecandidate = null;
@@ -253,18 +259,18 @@ export function CallModal() {
     }
   };
 
-  // Listen to WebRTC signaling events from custom window events
+  // Listen to WebRTC signaling events from custom window events (stable subscription via activeCallRef)
   useEffect(() => {
     // 1. Caller receives "call_accepted" from Recipient
     const handleCallAccepted = async () => {
       callSounds.stop();
-      const currentCall = activeCall;
+      const currentCall = activeCallRef.current;
       if (!currentCall) return;
 
       try {
         let stream = localStreamRef.current;
         if (!stream) {
-          stream = await acquireLocalMedia(isVideoCall);
+          stream = await acquireLocalMedia(currentCall.callType === "video");
         }
         if (!stream) return;
 
@@ -287,7 +293,7 @@ export function CallModal() {
     const handleCallSignal = async (e: Event) => {
       const customEvent = e as CustomEvent;
       const { signal, from } = customEvent.detail || {};
-      const currentCall = activeCall;
+      const currentCall = activeCallRef.current;
       if (!signal || !currentCall) return;
 
       try {
@@ -295,7 +301,7 @@ export function CallModal() {
         if (signal.type === "offer" && signal.offer) {
           let stream = localStreamRef.current;
           if (!stream) {
-            stream = await acquireLocalMedia(isVideoCall);
+            stream = await acquireLocalMedia(currentCall.callType === "video");
           }
           if (!stream) return;
 
@@ -363,8 +369,6 @@ export function CallModal() {
       window.removeEventListener("chatsphere:call_rejected", handleCallRejected);
     };
   }, [
-    activeCall,
-    isVideoCall,
     acquireLocalMedia,
     getOrCreatePeerConnection,
     flushQueuedCandidates,
@@ -486,12 +490,16 @@ export function CallModal() {
     }
   };
 
-  // Toggle Speaker Audio Mute
+  // Toggle Speaker Audio Mute (mutes both remote audio & video elements)
   const toggleSpeaker = () => {
+    const nextMuted = !isSpeakerMuted;
     if (remoteAudioRef.current) {
-      remoteAudioRef.current.muted = !remoteAudioRef.current.muted;
-      setIsSpeakerMuted(remoteAudioRef.current.muted);
+      remoteAudioRef.current.muted = nextMuted;
     }
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.muted = nextMuted;
+    }
+    setIsSpeakerMuted(nextMuted);
   };
 
   // End or Decline
@@ -522,7 +530,7 @@ export function CallModal() {
   return (
     <div
       ref={modalContainerRef}
-      className={`fixed inset-0 z-[99999] flex items-center justify-center bg-black/85 backdrop-blur-md transition-all duration-300 ${
+      className={`fixed inset-0 z-[99999] flex items-center justify-center bg-black/85 backdrop-blur-md transition-all duration-300 animate-in fade-in ${
         isFullscreen ? "p-0" : "p-3 sm:p-6"
       }`}
     >
@@ -536,7 +544,7 @@ export function CallModal() {
             : isVideoCall
             ? "max-w-4xl h-[88vh] max-h-[750px] rounded-3xl"
             : "max-w-sm rounded-3xl"
-        } bg-[#111b21] dark:bg-[#0b141a] border border-slate-800 shadow-2xl flex flex-col items-center justify-between overflow-hidden transition-all duration-300`}
+        } bg-[#111b21] dark:bg-[#0b141a] border border-slate-800 shadow-2xl flex flex-col items-center justify-between overflow-hidden transition-all duration-300 animate-in zoom-in-95`}
       >
         {/* Subtle Ambient Glow */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />

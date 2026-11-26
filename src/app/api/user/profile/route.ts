@@ -124,3 +124,56 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "Failed to update profile" }, { status: 500 });
   }
 }
+
+export const PUT = PATCH;
+
+export async function DELETE() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const userId = session.user.id;
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // Find 1-to-1 direct conversations this user belongs to so we can delete them cleanly
+    const directMemberships = await prisma.conversationMember.findMany({
+      where: {
+        userId,
+        conversation: { isGroup: false },
+      },
+      select: { conversationId: true },
+    });
+    const directConvIds = directMemberships.map((m) => m.conversationId);
+
+    await prisma.$transaction(async (tx) => {
+      if (directConvIds.length > 0) {
+        await tx.conversation.deleteMany({
+          where: { id: { in: directConvIds } },
+        });
+      }
+      if (user.email) {
+        await tx.verificationToken.deleteMany({
+          where: { identifier: user.email.toLowerCase() },
+        });
+      }
+      await tx.user.delete({
+        where: { id: userId },
+      });
+    });
+
+    return NextResponse.json({ success: true, message: "Account permanently deleted" });
+  } catch (error: any) {
+    console.error("Account deletion error:", error);
+    return NextResponse.json({ error: "Failed to delete account" }, { status: 500 });
+  }
+}

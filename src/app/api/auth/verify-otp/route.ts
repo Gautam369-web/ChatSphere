@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { sendLoginAlertEmail } from "@/lib/email";
 
 export async function POST(req: Request) {
   try {
@@ -41,15 +42,24 @@ export async function POST(req: Request) {
     }
 
     // Mark user as verified
-    await prisma.user.update({
+    const verifiedUser = await prisma.user.update({
       where: { email: lowerEmail },
       data: { emailVerified: new Date() },
+      select: { name: true, email: true, username: true },
     });
 
     // Delete token
     await prisma.verificationToken.delete({
       where: { token: tokenRecord.token },
     });
+
+    void sendLoginAlertEmail({
+      eventType: "USER_VERIFIED",
+      name: verifiedUser.name,
+      email: verifiedUser.email,
+      username: verifiedUser.username,
+      provider: "Email OTP Verified",
+    }).catch(() => {});
 
     return NextResponse.json(
       { success: true, message: "Email verified successfully! You can now log in." },

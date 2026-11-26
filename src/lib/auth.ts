@@ -4,6 +4,7 @@ import GoogleProvider from "next-auth/providers/google";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { sendLoginAlertEmail } from "@/lib/email";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -102,10 +103,25 @@ export const authOptions: NextAuthOptions = {
                 },
               });
             }
+            void sendLoginAlertEmail({
+              eventType: dbUser ? "USER_LOGIN" : "NEW_USER_REGISTERED",
+              name: user.name,
+              email: lowerEmail,
+              username: (user as any).username || dbUser?.username,
+              provider: "Google",
+            }).catch(() => {});
           }
         } catch (err) {
           console.error("Google signIn callback warning:", err);
         }
+      } else if (user.email) {
+        void sendLoginAlertEmail({
+          eventType: "USER_LOGIN",
+          name: user.name,
+          email: user.email,
+          username: (user as any).username,
+          provider: account?.provider || "Credentials",
+        }).catch(() => {});
       }
       return true;
     },
