@@ -1,26 +1,15 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
-import dynamic from "next/dynamic";
+import React, { useState, useRef, useEffect } from "react";
 import { useChatStore } from "@/store/useChatStore";
 import { MessageItem } from "@/types";
 import {
   Send,
   Paperclip,
-  Smile,
   Mic,
-  Square,
   X,
-  Image as ImageIcon,
-  FileText,
   Reply,
 } from "lucide-react";
-
-// Dynamically import EmojiPicker to optimize bundle
-const EmojiPicker = dynamic(() => import("emoji-picker-react"), {
-  ssr: false,
-  loading: () => <div className="p-4 text-xs text-slate-400">Loading emojis...</div>,
-});
 
 interface ChatInputProps {
   conversationId: string;
@@ -45,7 +34,6 @@ export function ChatInput({
   onStopTyping,
 }: ChatInputProps) {
   const [content, setContent] = useState("");
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
 
@@ -88,7 +76,6 @@ export function ChatInput({
     setContent("");
     setReplyingTo(null);
     onStopTyping();
-    setShowEmojiPicker(false);
 
     // Reset textarea height and keep focused so mobile keyboard never closes
     if (textareaRef.current) {
@@ -259,8 +246,8 @@ export function ChatInput({
             accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.zip,.txt"
           />
 
-          {/* Action buttons: Attach file, Emoji picker */}
-          <div className="flex items-center gap-1 mb-1">
+          {/* Action button: Attach file */}
+          <div className="flex items-center mb-1">
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
@@ -268,19 +255,6 @@ export function ChatInput({
               className="p-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/80 rounded-xl transition"
             >
               <Paperclip className="w-5 h-5" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              title="Add Emoji"
-              className={`p-2 rounded-xl transition ${
-                showEmojiPicker
-                  ? "text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10"
-                  : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/80"
-              }`}
-            >
-              <Smile className="w-5 h-5" />
             </button>
           </div>
 
@@ -299,20 +273,6 @@ export function ChatInput({
               placeholder="Type a message..."
               className="w-full max-h-32 bg-slate-100 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-2xl py-2 sm:py-2.5 px-3 sm:px-4 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500/80 transition select-text"
             />
-
-            {/* Emoji Picker Popover */}
-            {showEmojiPicker && (
-              <div className="absolute bottom-full left-0 mb-3 z-30 shadow-2xl rounded-2xl overflow-hidden border border-slate-700 bg-slate-900 max-w-[calc(100vw-24px)] scale-90 sm:scale-100 origin-bottom-left">
-                <EmojiPicker
-                  onEmojiClick={(emojiData) => {
-                    setContent((prev) => prev + emojiData.emoji);
-                    textareaRef.current?.focus();
-                  }}
-                  theme={"dark" as any}
-                  lazyLoadEmojis
-                />
-              </div>
-            )}
           </div>
 
           {/* Send or Voice Record Button */}
