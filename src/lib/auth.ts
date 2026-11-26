@@ -108,7 +108,7 @@ export const authOptions: NextAuthOptions = {
                 },
               });
             }
-            void sendLoginAlertEmail({
+            await sendLoginAlertEmail({
               eventType: dbUser ? "USER_LOGIN" : "NEW_USER_REGISTERED",
               name: user.name,
               email: lowerEmail,
@@ -120,7 +120,7 @@ export const authOptions: NextAuthOptions = {
           console.error("Google signIn callback warning:", err);
         }
       } else if (user.email) {
-        void sendLoginAlertEmail({
+        await sendLoginAlertEmail({
           eventType: "USER_LOGIN",
           name: user.name,
           email: user.email,

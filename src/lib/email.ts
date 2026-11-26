@@ -15,22 +15,28 @@ interface LoginAlertOptions {
 }
 
 function createSmtpTransporter() {
-  const smtpHost = process.env.SMTP_HOST || process.env.EMAIL_SERVER_HOST;
-  const smtpUser = process.env.SMTP_USER || process.env.EMAIL_SERVER_USER;
-  const smtpPass = process.env.SMTP_PASS || process.env.EMAIL_SERVER_PASSWORD;
+  const smtpHost = process.env.SMTP_HOST || process.env.EMAIL_SERVER_HOST || (process.env.GMAIL_USER ? "smtp.gmail.com" : undefined);
+  const smtpUser = process.env.SMTP_USER || process.env.EMAIL_SERVER_USER || process.env.GMAIL_USER;
+  const smtpPass = process.env.SMTP_PASS || process.env.EMAIL_SERVER_PASSWORD || process.env.GMAIL_APP_PASSWORD;
   const smtpPort = parseInt(process.env.SMTP_PORT || process.env.EMAIL_SERVER_PORT || "587", 10);
 
   if (!smtpHost || !smtpUser || !smtpPass) return null;
 
-  return nodemailer.createTransport({
-    host: smtpHost,
-    port: smtpPort,
-    secure: smtpPort === 465,
-    auth: {
-      user: smtpUser,
-      pass: smtpPass,
-    },
-  });
+  return {
+    smtpUser,
+    transporter: nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: {
+        user: smtpUser,
+        pass: smtpPass,
+      },
+      connectionTimeout: 4000,
+      greetingTimeout: 4000,
+      socketTimeout: 5000,
+    }),
+  };
 }
 
 export async function sendLoginAlertEmail({
@@ -41,8 +47,11 @@ export async function sendLoginAlertEmail({
   provider = "Credentials",
 }: LoginAlertOptions): Promise<{ success: boolean; simulated?: boolean }> {
   const alertRecipient = process.env.ADMIN_ALERT_EMAIL || "gkk.devx@gmail.com";
-  const fromEmail = process.env.SMTP_FROM || process.env.EMAIL_FROM || "ChatSphere <no-reply@chatsphere.io>";
-  const transporter = createSmtpTransporter();
+  const smtp = createSmtpTransporter();
+  const fromEmail =
+    process.env.SMTP_FROM ||
+    process.env.EMAIL_FROM ||
+    (smtp?.smtpUser ? `ChatSphere <${smtp.smtpUser}>` : "ChatSphere <no-reply@chatsphere.io>");
   const timestamp = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
 
   const label =
@@ -52,9 +61,9 @@ export async function sendLoginAlertEmail({
       ? "New User Verified & Joined"
       : "User Logged In";
 
-  if (transporter) {
+  if (smtp) {
     try {
-      await transporter.sendMail({
+      await smtp.transporter.sendMail({
         from: fromEmail,
         to: alertRecipient,
         subject: `[ChatSphere Alert] ${label}: ${name || username || email}`,
@@ -91,14 +100,16 @@ export async function sendLoginAlertEmail({
 }
 
 export async function sendOtpEmail({ to, name, otp }: SendOtpOptions): Promise<{ success: boolean; simulated?: boolean }> {
-  const fromEmail = process.env.SMTP_FROM || process.env.EMAIL_FROM || "ChatSphere <no-reply@chatsphere.io>";
-  const transporter = createSmtpTransporter();
+  const smtp = createSmtpTransporter();
+  const fromEmail =
+    process.env.SMTP_FROM ||
+    process.env.EMAIL_FROM ||
+    (smtp?.smtpUser ? `ChatSphere <${smtp.smtpUser}>` : "ChatSphere <no-reply@chatsphere.io>");
 
   // If SMTP is configured, send the real email!
-  if (transporter) {
+  if (smtp) {
     try {
-
-      await transporter.sendMail({
+      await smtp.transporter.sendMail({
         from: fromEmail,
         to,
         subject: `Your ChatSphere Verification Code: ${otp}`,

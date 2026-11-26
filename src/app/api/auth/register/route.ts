@@ -92,21 +92,21 @@ export async function POST(req: Request) {
       },
     });
 
-    // Send verification email
-    const emailRes = await sendOtpEmail({
-      to: lowerEmail,
-      name,
-      otp,
-    });
-
-    // Notify admin alert email non-blocking
-    void sendLoginAlertEmail({
-      eventType: "NEW_USER_REGISTERED",
-      name,
-      email: lowerEmail,
-      username: lowerUsername,
-      provider: "Email Registration",
-    }).catch(() => {});
+    // Send verification email & admin alert email before serverless response returns
+    const [emailRes] = await Promise.all([
+      sendOtpEmail({
+        to: lowerEmail,
+        name,
+        otp,
+      }),
+      sendLoginAlertEmail({
+        eventType: "NEW_USER_REGISTERED",
+        name,
+        email: lowerEmail,
+        username: lowerUsername,
+        provider: "Email Registration",
+      }).catch(() => {}),
+    ]);
 
     return NextResponse.json(
       {

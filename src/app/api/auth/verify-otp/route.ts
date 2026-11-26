@@ -53,7 +53,7 @@ export async function POST(req: Request) {
       where: { token: tokenRecord.token },
     });
 
-    void sendLoginAlertEmail({
+    await sendLoginAlertEmail({
       eventType: "USER_VERIFIED",
       name: verifiedUser.name,
       email: verifiedUser.email,
