@@ -8,9 +8,19 @@ import { MessageItem } from "@/types";
 import { sounds } from "@/lib/sound";
 
 let socketInstance: Socket | null = null;
+let socketUserId: string | null = null;
 
 export function getSocket(): Socket | null {
   return socketInstance;
+}
+
+export function resetSocket() {
+  if (socketInstance) {
+    socketInstance.removeAllListeners();
+    socketInstance.disconnect();
+    socketInstance = null;
+  }
+  socketUserId = null;
 }
 
 export function useSocket() {
@@ -45,7 +55,12 @@ export function useSocket() {
         ? "https://chatsphere-socket-fbcz.onrender.com"
         : process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3001";
 
+    if (socketInstance && socketUserId && socketUserId !== session.user.id) {
+      resetSocket();
+    }
+
     if (!socketInstance) {
+      socketUserId = session.user.id;
       socketInstance = io(socketUrl, {
         auth: {
           userId: session.user.id,

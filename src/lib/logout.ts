@@ -1,22 +1,33 @@
 "use client";
 
 import { signOut } from "next-auth/react";
-import { getSocket } from "@/hooks/useSocket";
+import { resetSocket } from "@/hooks/useSocket";
+import { useChatStore } from "@/store/useChatStore";
 
 export async function fastLogout(userId?: string) {
   try {
-    // 1. Disconnect real-time socket immediately
-    const sock = getSocket();
-    if (sock) {
-      sock.disconnect();
-    }
+    // 1. Disconnect & reset socket singleton so next login creates a fresh user socket
+    resetSocket();
 
-    // 2. Clear local caches immediately
+    // 2. Clear Zustand store and localStorage caches immediately
+    useChatStore.setState({
+      conversations: [],
+      activeConversationId: null,
+      messages: {},
+      onlineUsers: new Set(),
+      userLastSeen: {},
+      presenceSynced: false,
+      typingUsers: {},
+      infoPanelOpen: false,
+      replyingTo: null,
+      activeCall: null,
+      liveNotification: null,
+    });
+
     if (typeof window !== "undefined") {
       if (userId) {
         localStorage.removeItem(`chatsphere_cache_${userId}`);
       }
-      // Also clear any leftover chatsphere cache keys
       Object.keys(localStorage).forEach((key) => {
         if (key.startsWith("chatsphere_cache_")) {
           localStorage.removeItem(key);
@@ -24,11 +35,8 @@ export async function fastLogout(userId?: string) {
       });
     }
 
-    // 3. Fire NextAuth signOut without blocking UI for long (max 350ms wait)
-    await Promise.race([
-      signOut({ redirect: false }),
-      new Promise((resolve) => setTimeout(resolve, 350)),
-    ]);
+    // 3. Await NextAuth signOut so the HTTP-only session cookie is guaranteed cleared
+    await signOut({ redirect: false });
   } catch {
     // Proceed to login page regardless
   } finally {

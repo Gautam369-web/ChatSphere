@@ -26,7 +26,7 @@ export function GoogleButton({ text = "Continue with Google", callbackUrl = "/ch
       type="button"
       onClick={handleGoogleSignIn}
       disabled={isLoading}
-      className="w-full py-2.5 px-4 rounded-xl font-medium text-sm text-slate-200 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/70 shadow-sm active:scale-[0.99] transition-all flex items-center justify-center gap-3 disabled:opacity-50 group"
+      className="w-full py-2.5 px-4 rounded-xl font-medium text-sm text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-700/80 border border-slate-300 dark:border-slate-700/70 shadow-sm active:scale-[0.99] transition-all flex items-center justify-center gap-3 disabled:opacity-50 group cursor-pointer"
     >
       {isLoading ? (
         <div className="w-5 h-5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
